@@ -1,0 +1,57 @@
+{
+  "$schema": "https://threadline.dev/schemas/handoff/v0.1.json",
+  "schema_version": "0.1",
+  "id": "0198c0de-7000-7000-8000-000000000003",
+  "kind": "handoff",
+  "status": "draft",
+  "flags": [],
+  "created_at": "2026-09-02T10:00:00Z",
+  "updated_at": "2026-09-02T10:00:00Z",
+  "project": {
+    "id": "sha256:minimal-example-project",
+    "root_hint": ".",
+    "repository": null
+  },
+  "origin": {
+    "harness": "generic",
+    "adapter_version": "0.1.0",
+    "session_id": null,
+    "model": null,
+    "actor": { "type": "human", "name": null }
+  },
+  "work": {
+    "title": "Draft: tidy the example utilities (synthetic)",
+    "objective": "Consolidate duplicated string helpers under src/utils; synthetic draft.",
+    "scope": ["src/utils/**"],
+    "constraints": [],
+    "definition_of_done": ["Single helper module remains"]
+  },
+  "summary": {
+    "completed": [],
+    "current_state": "Just started; helpers still duplicated across three files.",
+    "why_it_matters": "Less drift between implementations."
+  },
+  "decisions": [],
+  "artifacts": [],
+  "evidence": [],
+  "open_items": [],
+  "risks": [],
+  "validation": {
+    "status": "not_run",
+    "validated_at": null,
+    "checks": [],
+    "freshness": null
+  },
+  "lineage": {
+    "parents": [],
+    "relation": "root",
+    "branch_label": null,
+    "merge_basis": []
+  },
+  "automation": {
+    "trigger": "manual",
+    "score": null,
+    "reasons": []
+  },
+  "redactions": []
+}

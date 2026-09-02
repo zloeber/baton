@@ -1,0 +1,274 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://threadline.dev/schemas/handoff/v0.1.json",
+  "title": "Threadline handoff",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "$schema",
+    "schema_version",
+    "id",
+    "kind",
+    "status",
+    "created_at",
+    "updated_at",
+    "project",
+    "origin",
+    "work",
+    "summary",
+    "validation",
+    "lineage",
+    "automation"
+  ],
+  "properties": {
+    "$schema": { "const": "https://threadline.dev/schemas/handoff/v0.1.json" },
+    "schema_version": { "const": "0.1" },
+    "id": { "type": "string", "format": "uuid" },
+    "kind": { "const": "handoff" },
+    "status": {
+      "enum": ["draft", "validated", "ready", "resumed", "superseded", "archived"]
+    },
+    "flags": {
+      "type": "array",
+      "items": { "enum": ["invalid", "conflicted"] }
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" },
+    "project": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string" },
+        "root_hint": { "type": "string" },
+        "repository": {
+          "type": ["object", "null"],
+          "additionalProperties": true,
+          "properties": {
+            "vcs": { "type": ["string", "null"] },
+            "remote_hint": { "type": ["string", "null"] },
+            "head": { "type": ["string", "null"] },
+            "dirty": { "type": ["boolean", "null"] }
+          }
+        }
+      }
+    },
+    "origin": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["harness"],
+      "properties": {
+        "harness": { "enum": ["codex", "claude-code", "cursor", "gemini-cli", "generic"] },
+        "adapter_version": { "type": ["string", "null"] },
+        "session_id": {
+          "type": ["string", "null"],
+          "description": "Opaque, policy-hashed session identifier. Never a raw external identifier."
+        },
+        "model": { "type": ["string", "null"] },
+        "actor": {
+          "type": ["object", "null"],
+          "additionalProperties": true,
+          "properties": {
+            "type": { "enum": ["agent", "human", "mixed"] },
+            "name": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+    "work": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["title", "objective"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "objective": { "type": "string", "minLength": 1 },
+        "scope": { "type": "array", "items": { "type": "string" } },
+        "constraints": { "type": "array", "items": { "type": "string" } },
+        "definition_of_done": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["current_state"],
+      "properties": {
+        "completed": { "type": "array", "items": { "type": "string" } },
+        "current_state": { "type": "string", "minLength": 1 },
+        "why_it_matters": { "type": ["string", "null"] }
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["id", "decision", "made_at"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Z]-[0-9]{3}$" },
+          "decision": { "type": "string", "minLength": 1 },
+          "rationale": { "type": ["string", "null"] },
+          "alternatives_considered": { "type": "array", "items": { "type": "string" } },
+          "evidence_ids": { "type": "array", "items": { "type": "string" } },
+          "made_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["path", "role"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "role": { "enum": ["modified", "created", "read", "generated"] },
+          "description": { "type": ["string", "null"] },
+          "revision": { "type": ["string", "null"] },
+          "content_hash": { "type": ["string", "null"] },
+          "sensitive": { "type": "boolean" }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["id", "type", "claim", "captured_at"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Z]-[0-9]{3}$" },
+          "type": { "enum": ["command", "test", "file", "commit", "url", "human"] },
+          "claim": { "type": "string", "minLength": 1 },
+          "ref": { "type": ["string", "null"] },
+          "captured_at": { "type": "string", "format": "date-time" },
+          "result": { "type": ["string", "null"] },
+          "digest": {
+            "type": ["string", "null"],
+            "description": "Digest of bounded/redacted output. Raw command output is never stored."
+          }
+        }
+      }
+    },
+    "open_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["id", "priority", "description"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Z]-[0-9]{3}$" },
+          "priority": { "enum": ["high", "medium", "low"] },
+          "description": { "type": "string", "minLength": 1 },
+          "suggested_action": { "type": ["string", "null"] },
+          "blocked_by": { "type": "array", "items": { "type": "string" } },
+          "acceptance_check": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["description", "severity"],
+        "properties": {
+          "description": { "type": "string", "minLength": 1 },
+          "severity": { "enum": ["high", "medium", "low"] },
+          "mitigation": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["pass", "warn", "fail", "not_run"] },
+        "validated_at": { "type": ["string", "null"], "format": "date-time" },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["name", "status", "detail"],
+            "properties": {
+              "name": { "type": "string" },
+              "status": { "enum": ["pass", "warn", "fail", "skipped"] },
+              "detail": { "type": "string" }
+            }
+          }
+        },
+        "freshness": {
+          "type": ["object", "null"],
+          "additionalProperties": true,
+          "properties": {
+            "git_head_at_capture": { "type": ["string", "null"] },
+            "git_head_now": { "type": ["string", "null"] },
+            "stale": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "lineage": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["relation"],
+      "properties": {
+        "parents": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+        "relation": { "enum": ["root", "continue", "fork", "merge", "amend"] },
+        "branch_label": { "type": ["string", "null"] },
+        "merge_basis": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "automation": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["trigger"],
+      "properties": {
+        "trigger": { "enum": ["manual", "threshold", "hook", "timeout", "pre_compaction"] },
+        "score": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "reasons": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "redactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["field", "reason", "replacement"],
+        "properties": {
+          "field": { "type": "string" },
+          "reason": { "type": "string" },
+          "replacement": { "type": "string" }
+        }
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "description": "Extension field written by `threadline merge` (spec §14): decision conflicts and their resolution pointer.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["subject", "positions"],
+        "properties": {
+          "subject": { "type": "string" },
+          "parent_ids": { "type": "array", "items": { "type": "string" } },
+          "positions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": ["handoff_id", "decision_id", "decision"],
+              "properties": {
+                "handoff_id": { "type": "string" },
+                "decision_id": { "type": "string" },
+                "decision": { "type": "string" }
+              }
+            }
+          },
+          "resolution_decision_id": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

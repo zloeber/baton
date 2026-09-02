@@ -1,0 +1,30 @@
+{
+  "name": "@threadline/mcp",
+  "version": "0.1.0",
+  "description": "Threadline stdio MCP server wrapping @threadline/core. Local project writes only; no generic shell tool.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "threadline-mcp": "./dist/server.js"
+  },
+  "main": "./dist/server.js",
+  "types": "./dist/server.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "node ./scripts/lint.mjs",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@threadline/core": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.5"
+  }
+}

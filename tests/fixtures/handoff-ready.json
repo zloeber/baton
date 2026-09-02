@@ -1,0 +1,112 @@
+{
+  "$schema": "https://threadline.dev/schemas/handoff/v0.1.json",
+  "schema_version": "0.1",
+  "id": "0198c0de-7000-7000-8000-000000000001",
+  "kind": "handoff",
+  "status": "ready",
+  "flags": [],
+  "created_at": "2026-09-02T14:30:00Z",
+  "updated_at": "2026-09-02T14:32:00Z",
+  "project": {
+    "id": "sha256:synthetic-project-id-for-fixtures-only",
+    "root_hint": ".",
+    "repository": {
+      "vcs": "git",
+      "remote_hint": "github.com/example/synthetic-repo",
+      "head": "abc123def456",
+      "dirty": false
+    }
+  },
+  "origin": {
+    "harness": "generic",
+    "adapter_version": "0.1.0",
+    "session_id": "s-synthetic-session",
+    "model": "synthetic-model",
+    "actor": { "type": "agent", "name": "fixture-agent" }
+  },
+  "work": {
+    "title": "Implement resumable OAuth callback validation (synthetic fixture)",
+    "objective": "Reject replayed OAuth state parameters using timing-safe comparison; fixture data only.",
+    "scope": ["src/auth/**", "tests/auth/**"],
+    "constraints": ["Do not change the public callback URL"],
+    "definition_of_done": ["Focused tests pass", "Replayed state values are rejected"]
+  },
+  "summary": {
+    "completed": ["Added timing-safe state comparison helper (fixture)"],
+    "current_state": "Helper merged; integration fixture for duplicate callback still outstanding.",
+    "why_it_matters": "Prevents callback replay in the synthetic example."
+  },
+  "decisions": [
+    {
+      "id": "D-001",
+      "decision": "Use timing-safe comparison for state values (fixture).",
+      "rationale": "Avoid distinguishable comparisons for a secret-derived value.",
+      "alternatives_considered": ["Plain equality"],
+      "evidence_ids": ["E-001"],
+      "made_at": "2026-09-02T14:20:00Z"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "src/auth/callback.ts",
+      "role": "modified",
+      "description": "Validation entry point (synthetic path; not required to exist for show/render)",
+      "revision": "git:abc123def456",
+      "content_hash": null,
+      "sensitive": false
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E-001",
+      "type": "test",
+      "claim": "Focused unit suite passed after helper change (synthetic claim for fixture).",
+      "ref": "npm test -- auth/callback.test.ts",
+      "captured_at": "2026-09-02T14:25:00Z",
+      "result": "pass",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "open_items": [
+    {
+      "id": "O-001",
+      "priority": "high",
+      "description": "Add integration fixture for a duplicate callback (fixture task).",
+      "suggested_action": "Create fixture, run focused suite, then full suite.",
+      "blocked_by": [],
+      "acceptance_check": "Fixture proves replay is rejected."
+    }
+  ],
+  "risks": [
+    {
+      "description": "Working tree had unrelated changes at capture (fixture).",
+      "severity": "medium",
+      "mitigation": "Inspect diff before commit."
+    }
+  ],
+  "validation": {
+    "status": "pass",
+    "validated_at": "2026-09-02T14:32:00Z",
+    "checks": [
+      { "name": "schema", "status": "pass", "detail": "" },
+      { "name": "policy.secrets", "status": "pass", "detail": "no secret-like values" }
+    ],
+    "freshness": {
+      "git_head_at_capture": "abc123def456",
+      "git_head_now": "abc123def456",
+      "stale": false
+    }
+  },
+  "lineage": {
+    "parents": [],
+    "relation": "root",
+    "branch_label": null,
+    "merge_basis": []
+  },
+  "automation": {
+    "trigger": "manual",
+    "score": null,
+    "reasons": []
+  },
+  "redactions": []
+}

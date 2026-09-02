@@ -1,0 +1,34 @@
+{
+  "name": "@threadline/cli",
+  "version": "0.1.0",
+  "description": "Threadline CLI: capture, validate, prepare, show, resume, fork, merge, detect.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "threadline": "./dist/main.js"
+  },
+  "main": "./dist/main.js",
+  "types": "./dist/main.d.ts",
+  "exports": {
+    ".": "./dist/main.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "node ./scripts/lint.mjs",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@threadline/core": "workspace:*",
+    "better-sqlite3": "^12.4.1",
+    "commander": "^14.0.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.5"
+  }
+}

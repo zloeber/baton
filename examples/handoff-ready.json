@@ -1,0 +1,103 @@
+{
+  "$schema": "https://threadline.dev/schemas/handoff/v0.1.json",
+  "schema_version": "0.1",
+  "id": "0198c0de-7000-7000-8000-000000000002",
+  "kind": "handoff",
+  "status": "ready",
+  "flags": [],
+  "created_at": "2026-09-02T14:30:00Z",
+  "updated_at": "2026-09-02T14:32:00Z",
+  "project": {
+    "id": "sha256:synthetic-project-id-for-examples-only",
+    "root_hint": ".",
+    "repository": {
+      "vcs": "git",
+      "remote_hint": "github.com/example/synthetic-repo",
+      "head": "abc123def456",
+      "dirty": false
+    }
+  },
+  "origin": {
+    "harness": "generic",
+    "adapter_version": "0.1.0",
+    "session_id": "s-synthetic-session",
+    "model": "synthetic-model",
+    "actor": { "type": "agent", "name": null }
+  },
+  "work": {
+    "title": "Migrate CLI output formatting to a shared renderer (example)",
+    "objective": "All CLI commands emit through one renderer so --json output stays stable; synthetic example data.",
+    "scope": ["packages/cli/src/**"],
+    "constraints": ["Do not break existing --json output shape"],
+    "definition_of_done": ["Snapshot tests pass", "No duplicated formatting helpers remain"]
+  },
+  "summary": {
+    "completed": ["Extracted renderJson() helper (example)"],
+    "current_state": "Helper exists; three commands still format inline.",
+    "why_it_matters": "Keeps the machine-readable contract stable for automation."
+  },
+  "decisions": [
+    {
+      "id": "D-001",
+      "decision": "Keep --json shape frozen at v0.1 (example).",
+      "rationale": "Downstream scripts depend on it.",
+      "alternatives_considered": ["Version the output instead"],
+      "evidence_ids": [],
+      "made_at": "2026-09-02T14:10:00Z"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "packages/cli/src/render.ts",
+      "role": "created",
+      "description": "Shared JSON renderer (synthetic path)",
+      "revision": "git:abc123def456",
+      "content_hash": null,
+      "sensitive": false
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E-001",
+      "type": "command",
+      "claim": "Snapshot suite passed (synthetic claim).",
+      "ref": "pnpm test -- cli",
+      "captured_at": "2026-09-02T14:22:00Z",
+      "result": "pass",
+      "digest": null
+    }
+  ],
+  "open_items": [
+    {
+      "id": "O-001",
+      "priority": "medium",
+      "description": "Convert remaining inline formatting (example task).",
+      "suggested_action": "Migrate three commands, rerun snapshots.",
+      "blocked_by": [],
+      "acceptance_check": "grep finds no inline JSON.stringify formatting in commands."
+    }
+  ],
+  "risks": [],
+  "validation": {
+    "status": "pass",
+    "validated_at": "2026-09-02T14:32:00Z",
+    "checks": [{ "name": "schema", "status": "pass", "detail": "" }],
+    "freshness": {
+      "git_head_at_capture": "abc123def456",
+      "git_head_now": "abc123def456",
+      "stale": false
+    }
+  },
+  "lineage": {
+    "parents": [],
+    "relation": "root",
+    "branch_label": null,
+    "merge_basis": []
+  },
+  "automation": {
+    "trigger": "manual",
+    "score": null,
+    "reasons": []
+  },
+  "redactions": []
+}

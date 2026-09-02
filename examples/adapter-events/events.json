@@ -1,0 +1,42 @@
+[
+  {
+    "name": "high context pressure, high readiness -> prepare",
+    "event": {
+      "harness": "generic",
+      "signals": { "contextPressure": 0.92, "turnPressure": 0.6, "resumeReadiness": 0.9 }
+    },
+    "expect": "prepare"
+  },
+  {
+    "name": "low signals -> no nag",
+    "event": {
+      "harness": "generic",
+      "signals": { "contextPressure": 0.2 }
+    },
+    "expect": "none"
+  },
+  {
+    "name": "explicit request always recommends",
+    "event": {
+      "harness": "generic",
+      "signals": { "handoffRequest": true }
+    },
+    "expect": "recommend"
+  },
+  {
+    "name": "stuck + boundary crosses recommend",
+    "event": {
+      "harness": "generic",
+      "signals": { "stuckSignal": 0.8, "workBoundary": true, "changePressure": 0.4 }
+    },
+    "expect": "recommend"
+  },
+  {
+    "name": "all signals null -> no recommendation",
+    "event": {
+      "harness": "generic",
+      "signals": {}
+    },
+    "expect": "none"
+  }
+]

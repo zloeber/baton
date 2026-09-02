@@ -1,0 +1,29 @@
+{
+  "name": "@threadline/adapter-generic",
+  "version": "0.1.0",
+  "description": "Reference shell/event adapter for Threadline: maps normalized JSON events and shell commands onto the CLI (spec §15).",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "threadline-adapter-generic": "./dist/cli.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "node ./scripts/lint.mjs",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@threadline/adapter-sdk": "workspace:*",
+    "@threadline/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.5"
+  }
+}

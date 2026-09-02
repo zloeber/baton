@@ -1,0 +1,23 @@
+{
+  "name": "@threadline/adapter-sdk",
+  "version": "0.1.0",
+  "description": "Normalized event and adapter interfaces for Threadline harness integrations (spec §15).",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "node ./scripts/lint.mjs",
+    "test": "node ./scripts/lint.mjs",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@threadline/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
