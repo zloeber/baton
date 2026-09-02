@@ -11,6 +11,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 BRIDGE_VERSION = "hermes-0.1.0"
@@ -59,10 +60,35 @@ class BatonBridge:
         )
 
     def cli_command(self) -> list:
-        """Full command to run the CLI; .js entrypoints get a `node` prefix."""
+        """Full command to run the CLI.
+
+        Interpreters are resolved for scripts that cannot be exec'd directly
+        on all platforms: shebang scripts (e.g. the test fake CLI, which is a
+        `#!/usr/bin/env python3` file) only work when the OS honors shebangs;
+        windows cannot, so the interpreter is prefixed explicitly. .js/.mjs
+        entrypoints get a `node` prefix.
+        """
         cli = self.resolve_cli()
         if cli.endswith((".js", ".mjs")):
             return ["node", cli]
+        try:
+            with open(cli, "rb") as f:
+                magic = f.read(2)
+        except OSError:
+            magic = b""
+        if magic == b"#!":
+            with open(cli, "rb") as f:
+                first = f.readline().decode("utf-8", "replace").strip()
+            interp = first[2:].strip()
+            # `/usr/bin/env python3` form: take the argument after env.
+            if os.path.basename(interp) == "env" or interp.endswith("/env"):
+                parts = interp.split()
+                interp = parts[1] if len(parts) > 1 else "python3"
+            if shutil.which(interp):
+                return [interp, cli]
+            # Fall back to the running interpreter for python shebangs.
+            if "python" in os.path.basename(interp):
+                return [sys.executable, cli]
         return [cli]
 
     # ------------------------------------------------------------- execution
@@ -74,8 +100,12 @@ class BatonBridge:
         args are constructed by the engine, never from raw agent input.
         """
         cmd = self.cli_command() + args
+        # Insert --json right after the interpreter/cli argv[0..1] window, not
+        # at a fixed index: the command may be ["node", cli, ...] or
+        # ["python3", script, ...].
         if "--json" not in cmd:
-            cmd.insert(2, "--json")
+            insert_at = min(2, len(cmd))
+            cmd.insert(insert_at, "--json")
         try:
             proc = subprocess.run(
                 cmd,
