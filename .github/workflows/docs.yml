@@ -40,6 +40,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The emitter imports core's compiled dist/, so build core first.
+      - name: Build @baton/core
+        run: pnpm --filter @baton/core build
+
       - name: Emit schemas (docs embed the generated artifacts)
         run: pnpm --filter @baton/core emit:schemas
 
