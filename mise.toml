@@ -7,6 +7,7 @@ node = "22"
 python = "3.11"
 pnpm = "10.15.0"
 "pipx:pytest" = "8.3.4"
+gitleaks = "8"
 
 [settings]
 # Needed for better-sqlite3 native builds (spec §19 dependency posture).
@@ -18,9 +19,21 @@ description = "Install toolchain + workspace dependencies (first run)"
 run = ["mise install", "pnpm install", "python -m pip install --quiet pytest"]
 
 # ----- parity with CI (same order) -----
+# Order matters: build MUST precede typecheck — packages resolve @baton/core
+# types through core's dist/*.d.ts, which does not exist on a fresh clone.
+# (This exact ordering bug broke CI once; do not "optimize" it back.)
 [tasks.ci]
 description = "Everything CI runs, in the same order"
-depends = ["typecheck", "lint", "build", "test"]
+alias = "verify"
+run = [
+  "pnpm build",
+  "pnpm typecheck",
+  "pnpm lint",
+  "pnpm test",
+  "mise exec -- pytest tests/python",
+  "pnpm --filter @baton/core exec node scripts/emitSchemas.mjs --check",
+  "mise exec -- gitleaks detect -v",
+]
 
 [tasks.typecheck]
 description = "Typecheck all workspace packages"
@@ -40,11 +53,11 @@ run = "pnpm test"
 
 [tasks.test-python]
 description = "Hermes bridge contract + parity tests (pytest)"
-run = "python3 -m pytest tests/python"
+run = "mise exec -- pytest tests/python"
 
 [tasks."test:py"]
 description = "Alias for test-python"
-run = "python3 -m pytest tests/python"
+run = "mise exec -- pytest tests/python"
 
 [tasks."test:e2e"]
 description = "End-to-end suite only"
@@ -74,6 +87,10 @@ run = "pnpm build"
 [tasks.watch-core]
 description = "Rebuild @baton/core on change"
 run = "pnpm --filter @baton/core run build --watch"
+
+[tasks.gitleaks]
+description = "Secret scan of the repository history and working tree (fail on findings)"
+run = "mise exec -- gitleaks detect -v"
 
 [tasks.clean]
 description = "Remove build artifacts and dependencies"

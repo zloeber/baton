@@ -13,6 +13,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: pnpm/action-setup@v4
         with:
           version: 10.15.0
@@ -21,15 +25,16 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Build must precede typecheck: packages resolve @baton/core types
+      # through core's dist/*.d.ts, which does not exist on a fresh clone.
+      - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm lint
-      - run: pnpm build
       - run: pnpm test
       - name: Set up Python for Hermes bridge tests
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pipx install pytest || pip install pytest
       - name: Run Hermes bridge contract + parity tests
         run: |
           python -m pip install --quiet pytest

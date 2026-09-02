@@ -141,7 +141,8 @@ pnpm --filter @baton/docs build  # static build (also runs on CI → Pages)
 
 Working on the repo with an AI agent? Read [`AGENTS.md`](./AGENTS.md) —
 it maps the package graph, the schema-driven development loop, and the
-sharp edges.
+sharp edges, and makes `mise run ci` (build → typecheck → lint → tests →
+pytest → schema drift → gitleaks) mandatory before every push.
 
 CI runs build, typecheck, lint, tests, e2e, and the pytest suite on macOS,
 Linux, and Windows (Node 22); docs deploy to GitHub Pages on pushes to

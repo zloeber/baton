@@ -73,9 +73,11 @@ mirrors CI:
 | `mise run test` | Unit tests (core, cli, mcp, adapters) |
 | `mise run test:e2e` | CLI e2e suite (needs build) |
 | `mise run test:py` | pytest bridge suite (needs build) |
+| `mise run gitleaks` | Secret scan (history + working tree, fails on findings) |
 | `mise run emit:schemas` | Regenerate `schemas/*.json` from Zod |
 | `mise run schemas:check` | CI drift check (exit 1 on drift) |
 | `mise run docs:dev` / `docs:build` | Local docs server / static build |
+| `mise run ci` (alias `verify`) | **All of it**, in CI order — see below |
 
 Raw pnpm equivalents exist in `package.json` and `mise.toml` if you don't
 use mise.
@@ -101,6 +103,11 @@ emit, and add a reference page under `docs/schemas/`.
 
 ## Sharp edges (things that have bitten us)
 
+- **Build before typecheck — no exceptions.** Packages resolve `@baton/core`
+  types through core's `dist/*.d.ts`. On a fresh clone (i.e. CI) there is no
+  `dist/`, so running typecheck first fails in `@baton/cli` with unresolvable
+  imports. This exact ordering bug broke CI; locally your stale `dist/` hides
+  it. `mise run ci` encodes the correct order — use it.
 - **ESM only.** `"type": "module"` everywhere. Never `require()`; imports
   of local files need the `.js` extension in source (`.ts` on disk).
 - **Windows-safe shells.** Terminal commands run under Git Bash on Windows —
@@ -158,6 +165,26 @@ emit, and add a reference page under `docs/schemas/`.
   compaction cycle, fail-soft rules, rename scope.
 
 ## Conventions
+
+### Before you push — mandatory
+
+Every change must pass the full gate **before pushing or declaring done**:
+
+```bash
+mise run ci
+```
+
+This runs, in order: build → typecheck → lint → unit/e2e tests →
+pytest bridge suite → schema drift check → gitleaks secret scan. It mirrors
+`.github/workflows/ci.yml` (which also runs a gitleaks scan) including the
+build-before-typecheck ordering. Do not skip it, do not declare a task
+finished with a failing gate, and do not assume "it passed locally before my
+change" — stale build artifacts make stale confidence.
+
+If `mise run ci` is impossible in your environment (e.g. no toolchain), say
+so explicitly in your summary instead of implying the gate passed.
+
+Other conventions:
 
 - Commits: imperative mood, scope in subject (`cli: ...`, `core: ...`).
 - No code comments narrating *what* — comment *why* and cite spec sections.
