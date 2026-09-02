@@ -2,8 +2,11 @@
 // CLI lint: keep the exit-code contract centralized and forbid vendor SDKs.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = new URL("..", import.meta.url).pathname;
+// fileURLToPath, not .pathname: .pathname yields "/D:/..." on Windows and fs
+// calls throw ENOENT with a doubled drive path.
+const root = fileURLToPath(new URL("..", import.meta.url));
 const banned = [
   /from\s+["'](?:@modelcontextprotocol|@anthropic-ai|openai|cursor|gemini)["']/,
 ];

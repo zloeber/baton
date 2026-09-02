@@ -9,9 +9,11 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 
-const REPO = new URL("../..", import.meta.url).pathname;
+// fileURLToPath, not .pathname: .pathname yields "/D:/..." on Windows.
+const REPO = fileURLToPath(new URL("../..", import.meta.url));
 const CLI = join(REPO, "packages/cli/dist/main.js");
 const MCP = join(REPO, "packages/mcp/dist/server.js");
 
