@@ -169,7 +169,7 @@ Returned from `get_tool_schemas()`, dispatched via `handle_tool_call`:
 
 | Tool | Purpose | Guardrails |
 |---|---|---|
-| `baton_capture` | Agent records decisions/evidence/open items mid-session; feeds the next compaction's draft. | Draft-only; redaction pipeline applies; ids `D-*/E-*/O-*` auto-assigned or validated. |
+| `baton_capture` | Agent records decisions/evidence/failed attempts/open items mid-session; feeds the next compaction's draft. Failed attempts become negative knowledge rendered as "Do not retry" in the resume brief. | Draft-only; redaction pipeline applies; ids `D-*/E-*/F-*/O-*` auto-assigned or validated. |
 | `baton_resume` | Render the current/latest handoff brief on demand. | No file writes except the optional session marker. |
 | `baton_status` | Latest handoff, detector pressure/readiness/reasons, cooldown, staleness. | Read-only. |
 

@@ -153,6 +153,7 @@ export class ProjectStore {
       decisions: [],
       artifacts: [],
       evidence: [],
+      failed_attempts: [],
       open_items: [],
       risks: [],
       validation: defaultValidationBlock(),

@@ -26,8 +26,12 @@ export type HandoffStatus = z.infer<typeof HandoffStatus>;
 export const HandoffFlag = z.enum(["invalid", "conflicted"]);
 export type HandoffFlag = z.infer<typeof HandoffFlag>;
 
-export const EvidenceType = z.enum(["command", "test", "file", "commit", "url", "human"]);
+export const EvidenceType = z.enum(["command", "test", "file", "commit", "url", "human", "observation"]);
 export type EvidenceType = z.infer<typeof EvidenceType>;
+
+/** Outcome of a failed approach (§6 negative knowledge). */
+export const FailedAttemptOutcome = z.enum(["failed", "regressed", "abandoned"]);
+export type FailedAttemptOutcome = z.infer<typeof FailedAttemptOutcome>;
 
 export const ArtifactRole = z.enum(["modified", "created", "read", "generated"]);
 export type ArtifactRole = z.infer<typeof ArtifactRole>;
@@ -115,6 +119,10 @@ export type WorkInfo = z.infer<typeof WorkInfoSchema>;
 export const SummaryInfoSchema = z
   .object({
     completed: z.array(z.string()),
+    /** Threads actively underway at capture (work-state model, §4). */
+    in_progress: z.array(z.string()).default([]),
+    /** Objective findings learned during the session, distinct from decisions. */
+    discoveries: z.array(z.string()).default([]),
     current_state: z.string().min(1),
     why_it_matters: z.string().nullable(),
   })
@@ -178,6 +186,23 @@ export const RiskSchema = z
   })
   .passthrough();
 export type Risk = z.infer<typeof RiskSchema>;
+
+/**
+ * Negative knowledge (spec §6): an approach that was tried and did not work.
+ * The successor must receive "do not retry X" concisely, with the evidence
+ * that justified the conclusion, so failed paths are never re-walked blindly.
+ */
+export const FailedAttemptSchema = z
+  .object({
+    id: structuredId,
+    approach: z.string().min(1),
+    outcome: FailedAttemptOutcome.nullable(),
+    reason: z.string().nullable(),
+    evidence_ids: z.array(z.string()),
+    avoid_repeating: z.boolean(),
+  })
+  .passthrough();
+export type FailedAttempt = z.infer<typeof FailedAttemptSchema>;
 
 export const ValidationCheckSchema = z
   .object({
@@ -285,6 +310,7 @@ export const HandoffSchema = z
     decisions: z.array(DecisionSchema),
     artifacts: z.array(ArtifactSchema),
     evidence: z.array(EvidenceSchema),
+    failed_attempts: z.array(FailedAttemptSchema).default([]),
     open_items: z.array(OpenItemSchema),
     risks: z.array(RiskSchema),
     validation: ValidationBlockSchema,
@@ -317,6 +343,7 @@ export const HandoffInputSchema = HandoffSchema.partial({
   decisions: true,
   artifacts: true,
   evidence: true,
+  failed_attempts: true,
   open_items: true,
   risks: true,
 }).passthrough();

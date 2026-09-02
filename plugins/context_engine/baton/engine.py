@@ -180,6 +180,7 @@ class BatonContextEngine(ContextEngine):
             "completed": [],
             "artifacts": [],
             "evidence": [],
+            "failedAttempts": [],
             "openItems": [{
                 "id": "O-001",
                 "priority": "high",
@@ -191,6 +192,26 @@ class BatonContextEngine(ContextEngine):
         }
         if focus_topic:
             payload["constraints"] = ["Focus for the next phase: %s" % focus_topic]
+        pending, self._pending = self._pending or [], None
+        for record in pending:
+            kind = record["kind"]
+            text = record["text"]
+            if kind == "decision":
+                payload.setdefault("decisions", []).append(
+                    {"decision": text, "rationale": record.get("rationale")}
+                )
+            elif kind == "evidence":
+                payload.setdefault("evidence", []).append(
+                    {"claim": text, "result": record.get("result"), "type": "observation"}
+                )
+            elif kind == "failed_attempt":
+                payload.setdefault("failedAttempts", []).append(
+                    {"approach": text, "reason": record.get("reason"), "avoid_repeating": True}
+                )
+            else:  # open_item
+                payload.setdefault("openItems", []).append(
+                    {"description": text, "priority": record.get("priority", "medium")}
+                )
         out = self.bridge.checkpoint_create(payload)
         if ready:
             handoff_id = out["handoff"]["id"]
@@ -254,20 +275,23 @@ class BatonContextEngine(ContextEngine):
             {
                 "name": "baton_capture",
                 "description": (
-                    "Record a decision, evidence, or open item with Baton so it "
-                    "survives compaction. Draft-only; secret-like values are redacted."
+                    "Record a decision, evidence, failed attempt, or open item with "
+                    "Baton so it survives compaction. Failed attempts become negative "
+                    "knowledge the next session must not repeat. Draft-only; "
+                    "secret-like values are redacted."
                 ),
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "kind": {
                             "type": "string",
-                            "enum": ["decision", "evidence", "open_item"],
+                            "enum": ["decision", "evidence", "failed_attempt", "open_item"],
                             "description": "What to record",
                         },
                         "text": {"type": "string", "description": "The content to record"},
                         "rationale": {"type": "string", "description": "Why (decisions)"},
                         "result": {"type": "string", "description": "pass/fail (evidence)"},
+                        "reason": {"type": "string", "description": "Why it failed (failed_attempt)"},
                         "priority": {
                             "type": "string",
                             "enum": ["high", "medium", "low"],
@@ -313,13 +337,15 @@ class BatonContextEngine(ContextEngine):
     def _tool_capture(self, args: dict) -> str:
         kind = args.get("kind")
         text = (args.get("text") or "").strip()
-        if kind not in ("decision", "evidence", "open_item") or not text:
-            return json.dumps({"error": "invalid-args", "message": "kind must be decision|evidence|open_item with non-empty text"})
+        if kind not in ("decision", "evidence", "failed_attempt", "open_item") or not text:
+            return json.dumps({"error": "invalid-args", "message": "kind must be decision|evidence|failed_attempt|open_item with non-empty text"})
         record = {"kind": kind, "text": text}
         if kind == "decision":
             record["rationale"] = args.get("rationale")
         if kind == "evidence":
             record["result"] = args.get("result")
+        if kind == "failed_attempt":
+            record["reason"] = args.get("reason")
         if kind == "open_item":
             record["priority"] = args.get("priority", "medium")
         if self._pending is None:

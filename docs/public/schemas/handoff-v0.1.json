@@ -230,6 +230,20 @@
             "type": "string"
           }
         },
+        "in_progress": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "discoveries": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
         "current_state": {
           "type": "string",
           "minLength": 1
@@ -362,7 +376,8 @@
               "file",
               "commit",
               "url",
-              "human"
+              "human",
+              "observation"
             ]
           },
           "claim": {
@@ -402,6 +417,62 @@
         ],
         "additionalProperties": true
       }
+    },
+    "failed_attempts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Z]-\\d{3}$"
+          },
+          "approach": {
+            "type": "string",
+            "minLength": 1
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "failed",
+                  "regressed",
+                  "abandoned"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "avoid_repeating": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "approach",
+          "outcome",
+          "reason",
+          "evidence_ids",
+          "avoid_repeating"
+        ],
+        "additionalProperties": true
+      },
+      "default": []
     },
     "open_items": {
       "type": "array",

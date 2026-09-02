@@ -18,6 +18,7 @@ import {
   checkReadinessRequirements,
 } from "./schema.js";
 import { isUuid } from "./ids.js";
+import { scoreQuality, formatQuality, QualityScore } from "./quality.js";
 import {
   compileSecretPatterns,
   findTranscriptFields,
@@ -42,6 +43,8 @@ export interface ValidationReport {
   can_ready: boolean;
   warnings: string[];
   failures: string[];
+  /** Advisory continuity score (§7); never gates the state machine. */
+  quality: QualityScore;
 }
 
 export interface ValidationOptions {
@@ -93,6 +96,10 @@ export class Validator {
     // 7. Lineage
     checks.push(this.checkLineage(h));
 
+    // 8. Quality (advisory; deterministic continuity score, never a gate)
+    const quality = scoreQuality(h);
+    checks.push({ name: "quality", status: "pass", detail: formatQuality(quality) });
+
     for (const c of checks) {
       if (c.status === "fail") failures.push(`${c.name}: ${c.detail}`);
       if (c.status === "warn") warnings.push(`${c.name}: ${c.detail}`);
@@ -111,6 +118,7 @@ export class Validator {
       can_ready: canReady,
       warnings,
       failures,
+      quality,
     };
   }
 
@@ -136,6 +144,11 @@ export class Validator {
     for (const d of h.decisions) {
       for (const eid of d.evidence_ids) {
         if (!evidenceIds.has(eid)) problems.push(`decision ${d.id} references missing evidence ${eid}`);
+      }
+    }
+    for (const f of h.failed_attempts) {
+      for (const eid of f.evidence_ids) {
+        if (!evidenceIds.has(eid)) problems.push(`failed attempt ${f.id} references missing evidence ${eid}`);
       }
     }
     for (const o of h.open_items) {

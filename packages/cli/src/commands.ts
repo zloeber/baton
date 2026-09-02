@@ -8,8 +8,10 @@ import { join, relative, resolve } from "node:path";
 import {
   checkReadinessRequirements,
   Config,
+  formatQuality,
   Handoff,
   MergeConflictError,
+  freshnessState as deriveFreshnessState,
   resolveBatonDir,
   ProjectStore,
   ValidationReport,
@@ -37,6 +39,7 @@ import {
   renderMarkdown,
   renderResumePrompt,
   renderYaml,
+  scoreQuality,
   saveDetectorState,
   saveConfig,
   supersedePredecessors,
@@ -170,8 +173,18 @@ export interface CheckpointInput {
   objective?: string;
   currentState?: string;
   completed?: string[];
+  inProgress?: string[];
+  discoveries?: string[];
   constraints?: string[];
   definitionOfDone?: string[];
+  failedAttempts?: {
+    id?: string;
+    approach: string;
+    outcome?: "failed" | "regressed" | "abandoned" | null;
+    reason?: string | null;
+    evidence_ids?: string[];
+    avoid_repeating?: boolean;
+  }[];
   openItems?: {
     id: string;
     priority: "high" | "medium" | "low";
@@ -194,7 +207,7 @@ export interface CheckpointInput {
     ref?: string | null;
     result?: string | null;
   }[];
-  artifacts?: { path: string; role: "modified" | "created" | "read" | "generated"; description?: string | null }[];
+  artifacts?: { path: string; role: "modified" | "created" | "read" | "generated"; description?: string | null; content_hash?: string | null }[];
   risks?: { description: string; severity: "high" | "medium" | "low"; mitigation?: string | null }[];
   from?: string;
   trigger?: "manual" | "threshold" | "hook" | "timeout" | "pre_compaction";
@@ -237,6 +250,8 @@ export function cmdCheckpointCreate(
           },
           summary: {
             completed: input.completed ?? [],
+            in_progress: input.inProgress ?? [],
+            discoveries: input.discoveries ?? [],
             current_state: input.currentState,
             why_it_matters: null,
           },
@@ -253,7 +268,7 @@ export function cmdCheckpointCreate(
             role: a.role,
             description: a.description ?? null,
             revision: git.head ? `git:${git.head}` : null,
-            content_hash: null,
+            content_hash: a.content_hash ?? null,
             sensitive: false,
           })),
           evidence: (input.evidence ?? []).map((e, i) => ({
@@ -277,6 +292,14 @@ export function cmdCheckpointCreate(
             description: r.description,
             severity: r.severity,
             mitigation: r.mitigation ?? null,
+          })),
+          failed_attempts: (input.failedAttempts ?? []).map((f, i) => ({
+            id: f.id ?? `F-${String(i + 1).padStart(3, "0")}`,
+            approach: f.approach,
+            outcome: f.outcome ?? null,
+            reason: f.reason ?? null,
+            evidence_ids: f.evidence_ids ?? [],
+            avoid_repeating: f.avoid_repeating ?? true,
           })),
           lineage: input.from
             ? { parents: [ctx.store.loadOrThrow(input.from).id], relation: "continue", branch_label: null, merge_basis: [] }
@@ -426,6 +449,8 @@ export function cmdHandoffValidate(
     report.checks
       .map((c: { status: string; name: string; detail: string }) => `  ${c.status.padEnd(7)} ${c.name}${c.detail ? ` — ${c.detail}` : ""}`)
       .join("\n") +
+    "\n" +
+    formatQuality(report.quality) +
     "\n";
   return { payload: report, text, exitCode: report.status === "fail" ? 3 : 0 };
 }
@@ -567,6 +592,7 @@ export function cmdResume(
   const freshness = computeFreshness(h, ctx.rootDir, git.head);
   const rendered = { ...h, validation: { ...h.validation, freshness } } as Handoff;
   const prompt = renderResumePrompt(rendered);
+  const freshnessState = deriveFreshnessState(freshness);
   const staleReasons: string[] = [];
   if (freshness.git_head_at_capture && freshness.git_head_now && freshness.git_head_at_capture !== freshness.git_head_now) {
     staleReasons.push(
@@ -591,6 +617,8 @@ export function cmdResume(
     prompt,
     markdown: renderMarkdown(rendered),
     freshness,
+    freshness_state: freshnessState,
+    quality: scoreQuality(h).overall,
     stale_reasons: staleReasons,
     status,
   };

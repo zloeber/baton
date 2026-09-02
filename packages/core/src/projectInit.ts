@@ -27,7 +27,7 @@ export function hasLegacyBatonDir(rootDir: string): boolean {
   return existsSync(join(rootDir, LEGACY_BATON_DIR));
 }
 
-/** Detector weights/thresholds (spec §9.2) — all tunable via config. */
+/** Detector weights/thresholds (spec §9.2, extended per improvement plan §8) — all tunable via config. */
 export const DetectorConfigSchema = z
   .object({
     weights: z
@@ -39,6 +39,9 @@ export const DetectorConfigSchema = z
         changePressure: z.number(),
         stuckSignal: z.number(),
         workBoundary: z.number(),
+        semanticPhaseChange: z.number(),
+        unresolvedQuestions: z.number(),
+        sessionAgePressure: z.number(),
       })
       .default({
         explicitRequest: 1.0,
@@ -48,6 +51,9 @@ export const DetectorConfigSchema = z
         changePressure: 0.05,
         stuckSignal: 0.6,
         workBoundary: 0.25,
+        semanticPhaseChange: 0.35,
+        unresolvedQuestions: 0.3,
+        sessionAgePressure: 0.2,
       }),
     recommendThreshold: z.number().default(0.7),
     autoPrepareThreshold: z.number().default(0.85),

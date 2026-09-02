@@ -38,7 +38,7 @@ export interface HandoffCaptureRequest {
   }[];
   evidence?: {
     id: string;
-    type: "command" | "test" | "file" | "commit" | "url" | "human";
+    type: "command" | "test" | "file" | "commit" | "url" | "human" | "observation";
     claim: string;
     ref?: string | null;
     captured_at?: string;
@@ -54,6 +54,14 @@ export interface HandoffCaptureRequest {
     acceptance_check?: string | null;
   }[];
   risks?: { description: string; severity: "high" | "medium" | "low"; mitigation?: string | null }[];
+  failed_attempts?: {
+    id?: string;
+    approach: string;
+    outcome?: "failed" | "regressed" | "abandoned" | null;
+    reason?: string | null;
+    evidence_ids?: string[];
+    avoid_repeating?: boolean;
+  }[];
   parent?: string | null;
   trigger?: "manual" | "threshold" | "hook" | "timeout" | "pre_compaction";
   score?: number | null;

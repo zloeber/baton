@@ -48,10 +48,13 @@ via `--input <json-file>` (flags win over file values).
 | `--objective <text>` | Objective |
 | `--current-state <text>` | Current state |
 | `--completed <items...>` | Completed items |
+| `--in-progress <items...>` | Threads actively underway |
+| `--discovery <items...>` | Objective findings learned this session |
 | `--constraints <items...>` | Constraints |
 | `--open-item <json...>` | Open items as JSON objects |
 | `--decision <json...>` | Decisions as JSON objects |
 | `--evidence <json...>` | Evidence records as JSON objects |
+| `--failed-attempt <json...>` | Failed approaches (negative knowledge) as JSON objects |
 | `--artifact <json...>` | Artifacts as JSON objects |
 | `--risk <json...>` | Risks as JSON objects |
 | `--from <id>` | Parent handoff id (continuation) |

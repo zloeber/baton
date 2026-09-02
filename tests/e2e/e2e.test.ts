@@ -327,6 +327,124 @@ describe("E2E: doctor and lineage", () => {
   });
 });
 
+describe("E2E: work-state continuity (improvement plan §4-§7, §14)", () => {
+  it("carries negative knowledge, discoveries, and quality through the full lifecycle", () => {
+    const root = project();
+    tl(root, ["init"]);
+    const out = jsonOutput(root, [
+      "checkpoint", "create",
+      "--title", "Negative knowledge work",
+      "--objective", "Prove that failed approaches survive the handoff boundary.",
+      "--current-state", "Two approaches tried; one failed and must not be retried",
+      "--completed", "Approach A implemented",
+      "--discovery", "Library X lacks multi-tenant configuration",
+      "--failed-attempt", JSON.stringify({
+        id: "F-001",
+        approach: "Use library X",
+        outcome: "failed",
+        reason: "Does not support multi-tenant configuration",
+        avoid_repeating: true,
+      }),
+      "--decision", JSON.stringify({ id: "D-001", decision: "Build in-house instead of library X", rationale: "X failed the requirement", evidence_ids: ["E-001"] }),
+      "--evidence", JSON.stringify({ id: "E-001", type: "test", claim: "Reproduction test against X failed", ref: "node test-x.js", result: "fail" }),
+      "--open-item", JSON.stringify({ id: "O-001", priority: "high", description: "Continue in-house build", suggested_action: "Implement the config layer", acceptance_check: "Config loads in tests" }),
+    ]);
+    const id = (out.handoff as { id: string }).id;
+    tl(root, ["handoff", "validate", id]);
+    tl(root, ["handoff", "ready", id]);
+
+    // The resume brief answers "what failed?" without the transcript.
+    const brief = tl(root, ["resume", id]).stdout;
+    expect(brief).toContain("## Do not retry");
+    expect(brief).toContain("Use library X");
+    expect(brief).toContain("multi-tenant");
+    expect(brief).toContain("## Discoveries");
+    expect(brief).toContain("## First next action");
+    // Continuity score is part of the JSON contract.
+    const j = jsonOutput(root, ["resume", id, "--format", "json"]) as { quality: number; freshness_state: string };
+    expect(j.quality).toBeGreaterThan(0);
+    expect(j.freshness_state).toBe("fresh");
+  });
+
+  it("reports partially_stale when only artifacts drift", () => {
+    const root = project();
+    tl(root, ["init"]);
+    // Capture with a real content hash by writing the file first, hashing it
+    // into the record via --input.
+    writeFileSync(join(root, "app.ts"), "export const app = 1;\n");
+    const { createHash } = require("node:crypto") as typeof import("node:crypto");
+    const hash = `sha256:${createHash("sha256").update("export const app = 1;\n").digest("hex")}`;
+    const id = (
+      jsonOutput(root, [
+        "checkpoint", "create",
+        "--title", "Hashed artifact",
+        "--objective", "Detect artifact-only drift on resume.",
+        "--current-state", "artifact hashed at capture",
+        "--artifact", JSON.stringify({ path: "app.ts", role: "modified", content_hash: hash }),
+        "--open-item", JSON.stringify({ id: "O-001", priority: "high", description: "Next", suggested_action: "Act" }),
+      ]).handoff as { id: string }
+    ).id;
+    tl(root, ["handoff", "validate", id]);
+    tl(root, ["handoff", "ready", id]);
+    // Head does not move; artifact content does.
+    writeFileSync(join(root, "app.ts"), "export const app = 2;\n");
+    const j = jsonOutput(root, ["resume", id, "--format", "json"]) as {
+      freshness: { git_head_at_capture: string | null; git_head_now: string | null };
+      freshness_state: string;
+      stale_reasons: string[];
+    };
+    expect(j.freshness.git_head_at_capture).toBe(j.freshness.git_head_now);
+    expect(j.freshness_state).toBe("partially_stale");
+    expect(j.stale_reasons.some((r) => r.includes("app.ts"))).toBe(true);
+    expect(tl(root, ["resume", id]).stdout).toContain("PARTIALLY STALE");
+  });
+
+  it("cross-harness resume: a fresh session gets complete state without the transcript (§14)", () => {
+    const root = project();
+    tl(root, ["init"]);
+    // "Harness A" captures at a work boundary via the generic CLI surface.
+    const id = (
+      jsonOutput(root, [
+        "checkpoint", "create",
+        "--title", "OAuth callback hardening",
+        "--objective", "Reject replayed OAuth state parameters with timing-safe comparison",
+        "--current-state", "Helper implemented; integration fixture pending",
+        "--completed", "Added timing-safe comparison helper",
+        "--constraints", "Do not change the public callback URL",
+        "--decision", JSON.stringify({ id: "D-001", decision: "Use timing-safe comparison", rationale: "Secret-derived value", evidence_ids: ["E-001"] }),
+        "--evidence", JSON.stringify({ id: "E-001", type: "test", claim: "Unit suite passed", ref: "node -e \"process.exit(0)\"", result: "pass" }),
+        "--artifact", JSON.stringify({ path: "app.ts", role: "modified" }),
+        "--open-item", JSON.stringify({ id: "O-001", priority: "high", description: "Add duplicate-callback fixture", suggested_action: "Create fixture and run suite", acceptance_check: "Replay rejected" }),
+      ]).handoff as { id: string }
+    ).id;
+    tl(root, ["handoff", "validate", id]);
+    tl(root, ["handoff", "ready", id]);
+
+    // "Harness B" is a completely different client (MCP) resuming the record.
+    const proc = spawnSync("node", [MCP], {
+      cwd: root,
+      input:
+        JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "harness-b", version: "0" } } }) + "\n" +
+        JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized", params: {} }) + "\n" +
+        JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "handoff_resume", arguments: { root, id } } }) + "\n",
+      encoding: "utf8",
+      timeout: 30_000,
+    });
+    const lines = proc.stdout.split("\n").filter((l) => l.trim().startsWith("{"));
+    const responses = lines.map((l) => JSON.parse(l) as { id: number; result?: { content?: { text: string }[] } });
+    const text = responses.find((r) => r.id === 2)!.result!.content![0]!.text;
+    // The successor receives every state class it needs — objective, state,
+    // decisions, evidence, constraints, next action, freshness — and nothing
+    // about any conversation.
+    for (const section of ["## Objective", "## Current state", "## Decisions", "## Non-negotiable constraints", "## First next action", "## Verify freshness"]) {
+      expect(text).toContain(section);
+    }
+    expect(text).toContain("D-001");
+    expect(text).toContain("E-001");
+    expect(text.toLowerCase()).not.toContain("transcript");
+  });
+});
+
 describe("E2E: legacy .threadline migration (adapter spec §7.2)", () => {
   it("init hints, migrate --dry-run plans, migrate moves and re-ids, commands then use .baton", () => {
     const root = project();

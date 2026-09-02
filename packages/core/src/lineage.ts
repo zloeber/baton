@@ -139,6 +139,7 @@ function inheritContext(parent: Handoff): Record<string, unknown> {
   return {
     decisions: parent.decisions.map((d) => ({ ...d })),
     evidence: parent.evidence.map((e) => ({ ...e })),
+    failed_attempts: parent.failed_attempts.map((f) => ({ ...f })),
     risks: parent.risks.map((r) => ({ ...r })),
     redactions: [],
     validation: {
@@ -217,6 +218,7 @@ export function createMerge(
       ],
       open_items: parents.flatMap((p) => p.open_items.map((o) => ({ ...o }))),
       evidence: parents.flatMap((p) => p.evidence.map((e) => ({ ...e }))),
+      failed_attempts: parents.flatMap((p) => p.failed_attempts.map((f) => ({ ...f }))),
       artifacts: parents.flatMap((p) => p.artifacts.map((a) => ({ ...a }))),
       risks: parents.flatMap((p) => p.risks.map((r) => ({ ...r }))),
       lineage: {

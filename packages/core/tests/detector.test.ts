@@ -59,6 +59,31 @@ describe("pressure scoring (spec §9.2)", () => {
     const r2 = detectHandoff(signals({ handoffRequest: true }), cfg);
     expect(r2.reasons).toContain("explicit handoff request");
   });
+
+  it("phase/unresolved composite: 0.35*phase + 0.30*unresolved (improvement plan §8)", () => {
+    const r = detectHandoff(signals({ semanticPhaseChange: true, unresolvedQuestions: 1 }), cfg);
+    expect(r.pressure).toBeCloseTo(0.65, 5);
+    expect(r.reasons.some((x) => x.includes("phase"))).toBe(true);
+  });
+
+  it("semantic phase change alone stays below recommend", () => {
+    const r = detectHandoff(signals({ semanticPhaseChange: true }), cfg);
+    expect(r.pressure).toBeCloseTo(0.35, 5);
+    expect(r.recommend).toBe(false);
+  });
+
+  it("session age contributes its own term", () => {
+    const r = detectHandoff(signals({ sessionAgePressure: 1 }), cfg);
+    expect(r.pressure).toBeCloseTo(0.2, 5);
+    expect(r.reasons.some((x) => x.includes("session age"))).toBe(true);
+  });
+
+  it("new signals are reported with used/unused status", () => {
+    const r = detectHandoff(signals({ semanticPhaseChange: true, sessionAgePressure: 0.5 }), cfg);
+    expect(r.inputs.find((i) => i.key === "semanticPhaseChange")!.used).toBe(true);
+    expect(r.inputs.find((i) => i.key === "sessionAgePressure")!.used).toBe(true);
+    expect(r.inputs.find((i) => i.key === "unresolvedQuestions")!.used).toBe(false);
+  });
 });
 
 describe("recommend / auto_prepare thresholds (§9.2)", () => {

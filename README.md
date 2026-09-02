@@ -13,7 +13,11 @@ re-reading the old chat.
   the source of truth.
 - **Verified continuity** — decisions vs. evidence are separated; schema,
   paths, secrets, git state, and freshness are validated before a handoff is
-  marked ready.
+  marked ready, and a deterministic continuity score measures handoff
+  quality before it is trusted.
+- **Negative knowledge** — failed approaches are first-class records: the
+  resume brief renders an explicit **Do not retry** section so successors
+  never re-walk dead ends.
 - **Harness-agnostic** — a CLI plus a portable skill today; thin MCP/adapter
   integrations where your harness supports them.
 - **Safe automation** — the detector recommends and prepares drafts; it never
@@ -80,9 +84,12 @@ baton resume 0198c0de
 ```
 
 The resume brief is a bounded, vendor-neutral prompt: objective, current
-state, constraints, decisions, artifacts, evidence, risks, the first next
-action, and a final instruction to verify freshness. If the repository moved
-since capture, a prominent **STALE** section is rendered first.
+state, constraints, decisions, artifacts, evidence, failed approaches (an
+explicit **Do not retry** list), risks, the first next action, and a final
+instruction to verify freshness. Freshness is reported as a derived state —
+`fresh`, `partially_stale`, `stale`, or `unknown` — and a stale or drifted
+repository renders a prominent warning first. The resume JSON also carries
+`quality`, the deterministic continuity score.
 
 Prefer paste-into-chat? `baton resume <id> --format md` renders the full
 record as Markdown, or feed it to your agent through the skill in
@@ -110,10 +117,12 @@ baton detect --event '{"harness":"generic","signals":{"contextPressure":0.92,"re
 
 Scores are deterministic and auditable: the output shows the inputs actually
 used, the reasons, and the recommended action (`none` / `recommend` /
-`prepare`). Add `--prepare` to create a draft at `prepare` level. Explicit
-requests always create a draft; repeated prompts are suppressed for 20 minutes
-or until a material change. Weights and thresholds live in
-`.baton/config.json` (see `docs/guide/configuration.md`).
+`prepare`). Signals cover context/turn/elapsed pressure, work boundaries,
+explicit requests, uncommitted changes, repeated blockage, semantic phase
+changes, unresolved questions, and session age. Add `--prepare` to create a
+draft at `prepare` level. Explicit requests always create a draft; repeated
+prompts are suppressed for 20 minutes or until a material change. Weights and
+thresholds live in `.baton/config.json` (see `docs/guide/configuration.md`).
 
 ## Development
 

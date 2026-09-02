@@ -117,10 +117,13 @@ checkpoint
   .option("--objective <text>", "objective (required unless provided via --input)")
   .option("--current-state <text>", "current state (required unless provided via --input)")
   .option("--completed <items...>")
+  .option("--in-progress <items...>")
+  .option("--discovery <items...>")
   .option("--constraints <items...>")
   .option("--open-item <json...>", "open items as JSON objects")
   .option("--decision <json...>", "decisions as JSON objects")
   .option("--evidence <json...>", "evidence records as JSON objects")
+  .option("--failed-attempt <json...>", "failed approaches (negative knowledge) as JSON objects")
   .option("--artifact <json...>", "artifacts as JSON objects")
   .option("--risk <json...>", "risks as JSON objects")
   .option("--from <id>", "parent handoff id (continuation)")
@@ -142,10 +145,13 @@ checkpoint
         ...(opts.objective !== undefined ? { objective: opts.objective } : {}),
         ...(opts.currentState !== undefined ? { currentState: opts.currentState } : {}),
         ...(opts.completed !== undefined ? { completed: opts.completed } : {}),
+        ...(opts.inProgress !== undefined ? { inProgress: opts.inProgress } : {}),
+        ...(opts.discovery !== undefined ? { discoveries: opts.discovery } : {}),
         ...(opts.constraints !== undefined ? { constraints: opts.constraints } : {}),
         ...(opts.openItem !== undefined ? { openItems: parseAll(opts.openItem) } : {}),
         ...(opts.decision !== undefined ? { decisions: parseAll(opts.decision) } : {}),
         ...(opts.evidence !== undefined ? { evidence: parseAll(opts.evidence) } : {}),
+        ...(opts.failedAttempt !== undefined ? { failedAttempts: parseAll(opts.failedAttempt) } : {}),
         ...(opts.artifact !== undefined ? { artifacts: parseAll(opts.artifact) } : {}),
         ...(opts.risk !== undefined ? { risks: parseAll(opts.risk) } : {}),
         ...((opts.from !== undefined || fileInput.from !== undefined) ? { from: (opts.from as string) ?? (fileInput.from as string) } : {}),

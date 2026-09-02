@@ -29,6 +29,35 @@ describe("renderResumePrompt", () => {
     expect(text).toContain("STALE");
   });
 
+  it("renders a Do-not-retry section for negative knowledge (improvement plan §6)", () => {
+    const text = renderResumePrompt(h());
+    expect(text).toContain("## Do not retry");
+    expect(text).toContain("F-001");
+  });
+
+  it("renders discoveries and in-progress sections when present", () => {
+    const text = renderResumePrompt(h());
+    expect(text).toContain("## Discoveries");
+    expect(text).toContain("## In progress");
+  });
+
+  it("renders partially-stale freshness distinctly", () => {
+    const partial = HandoffSchema.parse({
+      ...fixture,
+      validation: {
+        ...fixture.validation,
+        freshness: {
+          git_head_at_capture: "abc123def456",
+          git_head_now: "abc123def456",
+          stale: true,
+          drifted_artifacts: ["src/auth/callback.ts"],
+        },
+      },
+    });
+    const text = renderResumePrompt(partial);
+    expect(text).toContain("PARTIALLY STALE");
+  });
+
   it("stays under the token budget (≤1,200 tokens by default, §11)", () => {
     const text = renderResumePrompt(h());
     // ~4 chars/token heuristic

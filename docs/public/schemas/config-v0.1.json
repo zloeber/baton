@@ -38,6 +38,15 @@
             },
             "workBoundary": {
               "type": "number"
+            },
+            "semanticPhaseChange": {
+              "type": "number"
+            },
+            "unresolvedQuestions": {
+              "type": "number"
+            },
+            "sessionAgePressure": {
+              "type": "number"
             }
           },
           "required": [
@@ -47,7 +56,10 @@
             "elapsedPressure",
             "changePressure",
             "stuckSignal",
-            "workBoundary"
+            "workBoundary",
+            "semanticPhaseChange",
+            "unresolvedQuestions",
+            "sessionAgePressure"
           ],
           "additionalProperties": false,
           "default": {
@@ -57,7 +69,10 @@
             "elapsedPressure": 0.1,
             "changePressure": 0.05,
             "stuckSignal": 0.6,
-            "workBoundary": 0.25
+            "workBoundary": 0.25,
+            "semanticPhaseChange": 0.35,
+            "unresolvedQuestions": 0.3,
+            "sessionAgePressure": 0.2
           }
         },
         "recommendThreshold": {

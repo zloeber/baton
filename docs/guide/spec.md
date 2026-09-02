@@ -142,6 +142,8 @@ File name: `.baton/handoffs/<created-at>--<short-id>.json` (UTC RFC 3339 timesta
   },
   "summary": {
     "completed": ["Added state comparison helper"],
+    "in_progress": ["Integration fixture for the duplicate-callback path"],
+    "discoveries": ["The provider echoes state only on the first callback"],
     "current_state": "Tests are written; one integration fixture remains.",
     "why_it_matters": "Prevents callback replay."
   },
@@ -163,12 +165,20 @@ File name: `.baton/handoffs/<created-at>--<short-id>.json` (UTC RFC 3339 timesta
   }],
   "evidence": [{
     "id": "E-002",
-    "type": "command|test|file|commit|url|human",
+    "type": "command|test|file|commit|url|human|observation",
     "claim": "Unit tests passed after helper change.",
     "ref": "npm test -- auth/callback.test.ts",
     "captured_at": "2026-09-02T14:25:00Z",
     "result": "pass",
     "digest": "sha256:optional redacted output digest"
+  }],
+  "failed_attempts": [{
+    "id": "F-001",
+    "approach": "Use library X",
+    "outcome": "failed|regressed|abandoned",
+    "reason": "Does not support multi-tenant configuration",
+    "evidence_ids": ["E-014"],
+    "avoid_repeating": true
   }],
   "open_items": [{
     "id": "O-001",
@@ -221,11 +231,14 @@ Baton supports partial signals. It must plainly display unavailable signals rath
 - `context_pressure`: harness-reported context-used ratio; otherwise `null`.
 - `turn_pressure`: current turns / configured soft turn budget.
 - `elapsed_pressure`: session elapsed time / configured soft duration.
-- `work_boundary`: agent/user declares a completed subtask, decision, test result, or phase transition.
+- `work_boundary`: agent/user declares a completed subtask, decision, test result, or milestone.
 - `handoff_request`: explicit “handoff”, “continue later”, “new session”, or adapter event.
 - `change_pressure`: uncommitted relevant changes or an advanced Git head since last checkpoint.
 - `stuck_signal`: repeated failing action/error fingerprint, or explicit user/agent declaration; optional and conservative.
 - `resume_readiness`: required fields populated + validation success + actionable next item.
+- `semantic_phase_change`: agent/user declares a phase transition (research→implement→verify) rather than a milestone; contributes to a phase/unresolved composite.
+- `unresolved_questions`: normalized count of open questions accumulated in the session (0–1).
+- `session_age_pressure`: session age vs. configured soft duration (0–1).
 
 ### 9.2 Score
 
@@ -233,7 +246,9 @@ Baton supports partial signals. It must plainly display unavailable signals rath
 pressure = max(
   1.00 * explicit_request,
   0.70 * context_pressure + 0.15 * turn_pressure + 0.10 * elapsed_pressure + 0.05 * change_pressure,
-  0.60 * stuck_signal + 0.25 * work_boundary + 0.15 * change_pressure
+  0.60 * stuck_signal + 0.25 * work_boundary + 0.15 * change_pressure,
+  0.35 * semantic_phase_change + 0.30 * unresolved_questions,
+  0.20 * session_age_pressure
 )
 
 recommend = pressure >= 0.70
@@ -260,10 +275,37 @@ All weights and thresholds belong in `.baton/config.json`. The detector must sto
 5. **Evidence:** command/test records are structurally well-formed; commands are never re-run by default. `--recheck` may re-run only explicitly allowlisted checks.
 6. **Actionability:** objective present, and either definition-of-done is satisfied or an open item includes suggested action and acceptance check.
 7. **Lineage:** parents exist when locally known; a merge contains at least two parents and a merge-resolution decision.
+8. **Quality:** the deterministic continuity score (§7a) is computed and reported with the checks; it is advisory and never gates readiness by itself.
 
 Validation returns JSON suitable for automation and a terse terminal summary. `warn` requires `--accept-warnings <reason>` to promote to ready. `fail` cannot be promoted without amendment.
 
-On resume, perform a fast freshness check against current Git head/path hashes. Render a prominent **STALE** section if relevant files or branch state changed; do not silently apply assumptions from a stale handoff.
+### 10a. Continuity score (handoff quality)
+
+> A handoff should be measurable before it is trusted.
+
+Every validation computes a deterministic continuity score from eight 0–100
+dimensions: `objective_clarity`, `current_state_clarity`,
+`decision_completeness`, `evidence_coverage`, `artifact_coverage`,
+`failed_attempts`, `next_action_clarity`, and `freshness`. The overall score
+is the dimension mean. Same record in, same score out — the scoring lives in
+core (`scoreQuality`), is reported in every `handoff validate` output and
+check list, and is advisory: it surfaces weak handoffs before they are
+trusted but never replaces the hard gates above.
+
+### 10b. Freshness states
+
+On resume, Baton derives one of four freshness states instead of a bare
+boolean:
+
+- `fresh` — nothing moved since capture.
+- `partially_stale` — artifact content drifted but the repository head is unchanged.
+- `stale` — the repository head moved since capture (or unclassifiable drift).
+- `unknown` — freshness was never evaluated.
+
+The state is part of the resume JSON contract (`freshness_state`) and drives
+the rendered warning: `STALE` and `PARTIALLY STALE` banners re-check
+assumptions before they are relied on; `unknown` asks the resuming agent to
+verify before acting.
 
 ## 11. CLI contract
 
@@ -273,6 +315,7 @@ All commands support `--json` with stable machine-readable output and exit codes
 baton init [--project-id <id>]
 baton session begin [--harness <name>] [--session-id <opaque-id>]
 baton checkpoint create --title <text> --objective <text> [--from <id>]
+  [--in-progress <items...>] [--discovery <items...>] [--failed-attempt <json...>]
 baton handoff prepare [--from <checkpoint>] [--trigger manual|threshold|hook]
 baton handoff validate <id> [--recheck]
 baton handoff ready <id> [--accept-warnings <reason>]
@@ -288,7 +331,9 @@ baton gc [--dry-run]  # only removes rebuildable local index/cache, never canoni
 
 MVP input ergonomics: interactive prompts when attached to a terminal; flags and `--input <json-file>` for automation. `handoff prepare` should prefill Git metadata, changed files, current working objective/session data, and a template for the operator/agent to complete—not invent summary facts.
 
-`resume --format prompt` produces a vendor-neutral bounded brief (target ≤1,200 tokens by default): objective, current state, non-negotiable constraints, decisions, relevant artifacts, validated evidence, risks, first next action, and a final instruction to verify freshness. It never embeds secret-redacted values.
+`resume --format prompt` produces a vendor-neutral bounded brief (target ≤1,200 tokens by default): objective, current state, completed/in-progress threads, discoveries, non-negotiable constraints, decisions, failed approaches rendered as an explicit **Do not retry** section, relevant artifacts, validated evidence, risks, first next action, and a final instruction to verify freshness. It never embeds secret-redacted values. Evidence is part of the brief contract, not a verbose extra: the brief must let a successor distinguish supported claims from bare assertions.
+
+The resume JSON adds `freshness_state` (`fresh` | `partially_stale` | `stale` | `unknown`, §10b) and `quality` (continuity score, §10a).
 
 ## 12. Agent skill
 
@@ -311,7 +356,7 @@ Package `@baton/mcp` as a stdio MCP server. It calls the same core library and h
 | Tool | Inputs | Result / guardrail |
 |---|---|---|
 | `baton_status` | project root | config, active/latest handoff, freshness, detector availability. |
-| `handoff_capture` | work/summary/decisions/open items/evidence, optional parent | creates a draft only; validates input and redacts policy matches. |
+| `handoff_capture` | work/summary/decisions/failed attempts/open items/evidence, optional parent | creates a draft only; validates input and redacts policy matches. |
 | `handoff_validate` | id, optional `recheck` | check report; recheck requires configured allowlist. |
 | `handoff_ready` | id, warning acknowledgement | promotes only after valid checks. |
 | `handoff_resume` | id, format | concise brief + freshness report; no implicit file writes except optional session marker. |
@@ -495,7 +540,9 @@ The MVP is ready for a public POC when all of the following are demonstrably tru
 5. Explicit user handoff requests always create a draft. Simulated pressure scores show their inputs/reasons, honor cooldown, and never terminate or launch a session automatically.
 6. A handoff can be resumed in a generic harness using a Markdown prompt and via MCP using `handoff_resume`, with equivalent core state and freshness results.
 7. Forking produces immutable linked children; merging two children fails until an explicit resolution decision is supplied.
-8. Validation catches malformed schema, missing in-root artifacts, out-of-root paths, invalid evidence references, and unallowlisted recheck commands.
+8. Validation catches malformed schema, missing in-root artifacts, out-of-root paths, invalid evidence references (including from failed attempts), and unallowlisted recheck commands.
+8a. The continuity score is computed deterministically on every validation, and resume reports `freshness_state` (`fresh`/`partially_stale`/`stale`/`unknown`) plus negative knowledge in the brief.
+8b. A handoff captured in one harness and resumed through a different client (CLI ↔ MCP) carries the full state model — objective, current state, decisions, evidence, constraints, failed attempts, next action, freshness — with no reference to any prior conversation.
 9. The generic adapter contract is documented and tested; at least Claude Code and Codex have copyable, non-invasive integration examples even if their richer lifecycle signals are unavailable.
 10. CI passes on supported platforms, and the README’s “five-minute handoff” example works exactly as written.
 

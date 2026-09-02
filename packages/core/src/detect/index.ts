@@ -2,7 +2,9 @@
  * Handoff detection and scoring (spec §9).
  *
  * Deterministic and pure: inputs in, score + reasons out. The detector never
- * kills or launches a session (spec §3 goal 5, §22.5).
+ * kills or launches a session (spec §3 goal 5, §22.5). The decision mechanism
+ * stays auditable — signals normalize into a weighted composite, never an
+ * opaque classifier (improvement plan §8).
  */
 import { z } from "zod";
 import { DetectorConfig } from "../projectInit.js";
@@ -17,6 +19,12 @@ export interface DetectorSignals {
   changePressure: number | null;
   stuckSignal: number | null;
   resumeReadiness: number | null;
+  /** Semantic phase change (research→implement→verify, …), not a milestone. */
+  semanticPhaseChange: boolean;
+  /** Unresolved questions accumulated during the session (0–1). */
+  unresolvedQuestions: number | null;
+  /** Session age vs. configured soft duration (0–1). */
+  sessionAgePressure: number | null;
 }
 
 export const SIGNAL_KEYS = [
@@ -28,6 +36,9 @@ export const SIGNAL_KEYS = [
   "changePressure",
   "stuckSignal",
   "resumeReadiness",
+  "semanticPhaseChange",
+  "unresolvedQuestions",
+  "sessionAgePressure",
 ] as const;
 
 export type SignalKey = (typeof SIGNAL_KEYS)[number];
@@ -41,6 +52,9 @@ export const SIGNAL_LABELS: Record<SignalKey, string> = {
   changePressure: "uncommitted/advanced changes",
   stuckSignal: "repeated blockage detected",
   resumeReadiness: "resume readiness",
+  semanticPhaseChange: "semantic phase change",
+  unresolvedQuestions: "unresolved questions",
+  sessionAgePressure: "session age pressure",
 };
 
 export function nullSignals(): DetectorSignals {
@@ -53,6 +67,9 @@ export function nullSignals(): DetectorSignals {
     changePressure: null,
     stuckSignal: null,
     resumeReadiness: null,
+    semanticPhaseChange: false,
+    unresolvedQuestions: null,
+    sessionAgePressure: null,
   };
 }
 
@@ -73,12 +90,14 @@ export interface DetectorResult {
 }
 
 /**
- * Pressure score per spec §9.2:
+ * Pressure score per spec §9.2 (extended per improvement plan §8):
  *
  * pressure = max(
  *   1.00 * explicit_request,
  *   0.70*context + 0.15*turn + 0.10*elapsed + 0.05*change,
- *   0.60*stuck + 0.25*boundary + 0.15*change
+ *   0.60*stuck + 0.25*boundary + 0.15*change,
+ *   0.35*phase_change + 0.30*unresolved_questions,
+ *   0.20*session_age
  * )
  */
 export function scorePressure(signals: DetectorSignals, cfg: DetectorConfig): { pressure: number; reasons: string[]; inputs: SignalSnapshot[] } {
@@ -128,10 +147,18 @@ export function scorePressure(signals: DetectorSignals, cfg: DetectorConfig): { 
   let term3 = w.stuckSignal * (stuck ?? 0) + w.workBoundary * boundary + w.changePressure * (change ?? 0);
   const term3Any = stuck !== null || boundary > 0 || change !== null;
 
+  // Term 4: phase-change/unresolved composite (improvement plan §8).
+  const phase = signals.semanticPhaseChange ? 1 : 0;
+  const unresolved = signals.unresolvedQuestions;
+  const age = signals.sessionAgePressure;
+  const term4 = w.semanticPhaseChange * phase + w.unresolvedQuestions * (unresolved ?? 0);
+  const term4Any = phase > 0 || unresolved !== null;
+
   const terms: number[] = [0];
   if (term2Any) terms.push(term2);
   if (term3Any) terms.push(term3);
-  const pressure = Math.max(...terms);
+  if (term4Any) terms.push(term4);
+  const pressure = Math.max(...terms, age !== null ? w.sessionAgePressure * age : 0);
 
   // Reasons: what actually drove the score, plainly showing unused signals.
   const reasons: string[] = [];
@@ -150,6 +177,15 @@ export function scorePressure(signals: DetectorSignals, cfg: DetectorConfig): { 
     if (change !== null && change > 0) parts.push(`changes ${(change * 100).toFixed(0)}%`);
     if (parts.length > 0) reasons.push(`blockage/boundary: ${parts.join(", ")}`);
   }
+  if (term4Any && pressure === term4 && pressure > 0) {
+    const parts: string[] = [];
+    if (phase > 0) parts.push("semantic phase change declared");
+    if (unresolved !== null && unresolved > 0) parts.push(`unresolved questions ${(unresolved * 100).toFixed(0)}%`);
+    if (parts.length > 0) reasons.push(`phase/complexity: ${parts.join(", ")}`);
+  }
+  if (age !== null && age > 0 && pressure === w.sessionAgePressure * age) {
+    reasons.push(`session age ${(age * 100).toFixed(0)}% of soft duration`);
+  }
   if (reasons.length === 0) reasons.push("no available pressure signals");
 
   push("contextPressure", ctx, ctx !== null);
@@ -158,6 +194,9 @@ export function scorePressure(signals: DetectorSignals, cfg: DetectorConfig): { 
   push("changePressure", change, change !== null);
   push("stuckSignal", stuck, stuck !== null);
   push("workBoundary", signals.workBoundary, signals.workBoundary);
+  push("semanticPhaseChange", signals.semanticPhaseChange, signals.semanticPhaseChange);
+  push("unresolvedQuestions", unresolved, unresolved !== null);
+  push("sessionAgePressure", age, age !== null);
 
   return { pressure, reasons, inputs };
 }
@@ -228,6 +267,9 @@ export const AdapterEventSchema = z.object({
       changePressure: z.number().min(0).max(1).nullable(),
       stuckSignal: z.number().min(0).max(1).nullable(),
       resumeReadiness: z.number().min(0).max(1).nullable(),
+      semanticPhaseChange: z.boolean().nullable(),
+      unresolvedQuestions: z.number().min(0).max(1).nullable(),
+      sessionAgePressure: z.number().min(0).max(1).nullable(),
     })
     .partial()
     .optional(),

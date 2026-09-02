@@ -100,6 +100,36 @@
               "type": "null"
             }
           ]
+        },
+        "semanticPhaseChange": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "unresolvedQuestions": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sessionAgePressure": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false

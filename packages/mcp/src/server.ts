@@ -60,7 +60,7 @@ const ToolSchemas: Record<McpToolName, z.ZodTypeAny> = {
       .array(
         z.object({
           id: z.string().optional(),
-          type: z.enum(["command", "test", "file", "commit", "url", "human"]),
+          type: z.enum(["command", "test", "file", "commit", "url", "human", "observation"]),
           claim: z.string().min(1),
           ref: z.string().nullable().optional(),
           captured_at: z.string().optional(),
@@ -87,6 +87,18 @@ const ToolSchemas: Record<McpToolName, z.ZodTypeAny> = {
           description: z.string().min(1),
           severity: z.enum(["high", "medium", "low"]),
           mitigation: z.string().nullable().optional(),
+        }),
+      )
+      .optional(),
+    failed_attempts: z
+      .array(
+        z.object({
+          id: z.string().optional(),
+          approach: z.string().min(1),
+          outcome: z.enum(["failed", "regressed", "abandoned"]).nullable().optional(),
+          reason: z.string().nullable().optional(),
+          evidence_ids: z.array(z.string()).optional(),
+          avoid_repeating: z.boolean().optional(),
         }),
       )
       .optional(),
@@ -134,6 +146,9 @@ const ToolSchemas: Record<McpToolName, z.ZodTypeAny> = {
         changePressure: z.number().min(0).max(1).nullable().optional(),
         stuckSignal: z.number().min(0).max(1).nullable().optional(),
         resumeReadiness: z.number().min(0).max(1).nullable().optional(),
+        semanticPhaseChange: z.boolean().nullable().optional(),
+        unresolvedQuestions: z.number().min(0).max(1).nullable().optional(),
+        sessionAgePressure: z.number().min(0).max(1).nullable().optional(),
       })
       .optional(),
   }),
@@ -141,7 +156,7 @@ const ToolSchemas: Record<McpToolName, z.ZodTypeAny> = {
 
 const TOOL_DESCRIPTIONS: Record<McpToolName, string> = {
   baton_status: "Baton project status: config, latest handoff, git freshness, detector availability.",
-  handoff_capture: "Create a draft handoff from structured work/summary/decisions/open items/evidence. Secrets are redacted per policy; creates a draft only.",
+  handoff_capture: "Create a draft handoff from structured work/summary/decisions/open items/failed attempts/evidence. Secrets are redacted per policy; creates a draft only.",
   handoff_validate: "Run deterministic validation checks (schema, policy, artifacts, evidence, lineage). recheck only runs allowlisted commands.",
   handoff_ready: "Promote a validated handoff to ready (immutable). Warning acknowledgement required when validation warns.",
   handoff_resume: "Render a compact resume brief plus a freshness report; flags stale state prominently.",

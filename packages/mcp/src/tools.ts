@@ -179,6 +179,14 @@ export function handoffCapture(ctx: ToolContext, req: HandoffCaptureRequest): Mc
       severity: r.severity,
       mitigation: r.mitigation ?? null,
     })),
+    failed_attempts: (req.failed_attempts ?? []).map((f, i) => ({
+      id: f.id ?? `F-${String(i + 1).padStart(3, "0")}`,
+      approach: f.approach,
+      outcome: f.outcome ?? null,
+      reason: f.reason ?? null,
+      evidence_ids: f.evidence_ids ?? [],
+      avoid_repeating: f.avoid_repeating ?? true,
+    })),
     lineage: req.parent
       ? {
           parents: [ctx.store.loadOrThrow(req.parent).id],

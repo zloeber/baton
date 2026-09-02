@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { computeFreshness, isFresh } from "../src/freshness.js";
+import { computeFreshness, isFresh, freshnessState } from "../src/freshness.js";
 import { HandoffSchema } from "../src/schema.js";
 import { createHash } from "node:crypto";
 import fixture from "../../../tests/fixtures/handoff-ready.json" with { type: "json" };
@@ -77,5 +77,43 @@ describe("freshness (§22.3)", () => {
     const h = HandoffSchema.parse(fixture);
     const f = computeFreshness(h, root, "abc123def456");
     expect(f.stale).toBe(false);
+  });
+});
+
+describe("freshnessState (improvement plan §19)", () => {
+  it("is unknown when freshness was never evaluated", () => {
+    expect(freshnessState(null)).toBe("unknown");
+    expect(freshnessState(undefined)).toBe("unknown");
+  });
+
+  it("is fresh when nothing moved", () => {
+    expect(
+      freshnessState({ git_head_at_capture: "a", git_head_now: "a", stale: false }),
+    ).toBe("fresh");
+  });
+
+  it("is stale when the head moved", () => {
+    expect(
+      freshnessState({ git_head_at_capture: "a", git_head_now: "b", stale: true }),
+    ).toBe("stale");
+  });
+
+  it("is partially_stale for artifact-only drift (head unchanged)", () => {
+    expect(
+      freshnessState({
+        git_head_at_capture: "a",
+        git_head_now: "a",
+        stale: true,
+        drifted_artifacts: ["src/auth/callback.ts"],
+      } as never),
+    ).toBe("partially_stale");
+  });
+
+  it("computeFreshness always emits drifted_artifacts (possibly empty)", () => {
+    const root = project();
+    const h = HandoffSchema.parse(fixture);
+    const f = computeFreshness(h, root, h.project.repository?.head ?? null) as { drifted_artifacts?: string[] };
+    expect(Array.isArray(f.drifted_artifacts)).toBe(true);
+    expect(f.drifted_artifacts).toHaveLength(0);
   });
 });

@@ -5,7 +5,7 @@
  */
 import { Handoff } from "./schema.js";
 import type { Freshness } from "./schema.js";
-import { isFresh, freshnessFrom } from "./freshness.js";
+import { isFresh, freshnessFrom, freshnessState } from "./freshness.js";
 
 export interface RenderOptions {
   /** Hard character budget for the prompt brief; ~4 chars/token. */
@@ -63,6 +63,12 @@ export function renderResumePrompt(h: Handoff, options: RenderOptions = {}): str
   if (h.summary.completed.length > 0) {
     section(out, "Completed", bullets(h.summary.completed, 8));
   }
+  if (h.summary.in_progress.length > 0) {
+    section(out, "In progress", bullets(h.summary.in_progress, 8));
+  }
+  if (h.summary.discoveries.length > 0) {
+    section(out, "Discoveries", bullets(h.summary.discoveries, 8));
+  }
   if (h.work.constraints.length > 0) {
     section(out, "Non-negotiable constraints", bullets(h.work.constraints, 8));
   }
@@ -76,6 +82,30 @@ export function renderResumePrompt(h: Handoff, options: RenderOptions = {}): str
       ),
     );
   }
+  if (h.failed_attempts.length > 0) {
+    const avoid = h.failed_attempts.filter((f) => f.avoid_repeating);
+    if (avoid.length > 0) {
+      section(
+        out,
+        "Do not retry",
+        bullets(
+          avoid.map((f) => `${f.id}: ${f.approach}${f.reason ? ` — ${f.reason}` : ""}`),
+          8,
+        ),
+      );
+    }
+    const contextOnly = h.failed_attempts.filter((f) => !f.avoid_repeating);
+    if (contextOnly.length > 0) {
+      section(
+        out,
+        "Failed attempts (context, not forbidden)",
+        bullets(
+          contextOnly.map((f) => `${f.id}: ${f.approach}${f.reason ? ` — ${f.reason}` : ""}`),
+          6,
+        ),
+      );
+    }
+  }
   if (h.artifacts.length > 0) {
     section(
       out,
@@ -86,7 +116,10 @@ export function renderResumePrompt(h: Handoff, options: RenderOptions = {}): str
       ),
     );
   }
-  if (options.verbose && h.evidence.length > 0) {
+  // Evidence is part of the §11 brief contract ("validated evidence"), not a
+  // verbose extra: assertions without support are exactly what Baton exists
+  // to prevent. Bounded so large ledgers cannot blow the token budget.
+  if (h.evidence.length > 0) {
     section(
       out,
       "Evidence",
@@ -94,7 +127,7 @@ export function renderResumePrompt(h: Handoff, options: RenderOptions = {}): str
         h.evidence.map(
           (e) => `${e.id} (${e.type}${e.result ? `, ${e.result}` : ""}): ${e.claim}`,
         ),
-        10,
+        8,
       ),
     );
   }
@@ -120,12 +153,18 @@ export function renderResumePrompt(h: Handoff, options: RenderOptions = {}): str
 
   // Freshness guidance is always present (§10, §22.3).
   const stale = isStaleHandoff(h);
+  const state = freshnessState(freshnessFrom(h));
   out.push("## Verify freshness");
   out.push(
-    stale
+    state === "stale"
       ? "⚠ STALE: the repository has moved since this handoff was captured. Re-check the artifacts and decisions below before relying on them; do not silently apply stale assumptions."
-      : "Confirm the repository state matches this handoff before acting: re-run the checks referenced above, then continue with the first next action.",
+      : state === "partially_stale"
+        ? "⚠ PARTIALLY STALE: artifact content has drifted (repository head unchanged). Re-check the drifted artifacts below before relying on their contents."
+        : state === "unknown"
+          ? "⚠ FRESHNESS UNKNOWN: this handoff has never been evaluated against the repository. Verify the artifacts and decisions before relying on them."
+          : "Confirm the repository state matches this handoff before acting: re-run the checks referenced above, then continue with the first next action.",
   );
+  void stale;
   out.push("");
 
   return truncate(out.join("\n"), maxChars);
@@ -157,6 +196,8 @@ export function renderMarkdown(h: Handoff, options: RenderOptions = {}): string 
   section(out, "Current state", [h.summary.current_state]);
   if (h.summary.why_it_matters) section(out, "Why it matters", [h.summary.why_it_matters]);
   section(out, "Completed", bullets(h.summary.completed, 20));
+  if (h.summary.in_progress.length > 0) section(out, "In progress", bullets(h.summary.in_progress, 20));
+  if (h.summary.discoveries.length > 0) section(out, "Discoveries", bullets(h.summary.discoveries, 20));
   if (h.work.scope.length > 0) section(out, "Scope", bullets(h.work.scope, 20));
   section(out, "Constraints", bullets(h.work.constraints, 20));
   section(out, "Definition of done", bullets(h.work.definition_of_done, 20));
@@ -185,6 +226,16 @@ export function renderMarkdown(h: Handoff, options: RenderOptions = {}): string 
       out.push(
         `- **${e.id}** (${e.type}${e.result ? `, ${e.result}` : ""}): ${e.claim}${e.ref ? ` — \`${e.ref}\`` : ""}`,
       );
+    }
+    out.push("");
+  }
+  if (h.failed_attempts.length > 0) {
+    out.push("## Failed attempts");
+    for (const f of h.failed_attempts) {
+      out.push(
+        `- **${f.id}**${f.outcome ? ` (${f.outcome})` : ""}: ${f.approach}${f.reason ? ` — ${f.reason}` : ""}${f.avoid_repeating ? " · **avoid repeating**" : ""}`,
+      );
+      if (f.evidence_ids.length > 0) out.push(`  - evidence: ${f.evidence_ids.join(", ")}`);
     }
     out.push("");
   }
@@ -279,4 +330,4 @@ export function renderYaml(h: Handoff): string {
   return `${topLevel}\n`;
 }
 
-export { type Freshness, isFresh, freshnessFrom };
+export { type Freshness, isFresh, freshnessFrom, freshnessState };

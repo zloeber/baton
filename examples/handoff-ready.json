@@ -33,6 +33,8 @@
   },
   "summary": {
     "completed": ["Extracted renderJson() helper (example)"],
+    "in_progress": [],
+    "discoveries": ["Two of the three inline formatters were copy-pasted variants (example)."],
     "current_state": "Helper exists; three commands still format inline.",
     "why_it_matters": "Keeps the machine-readable contract stable for automation."
   },
@@ -67,6 +69,7 @@
       "digest": null
     }
   ],
+  "failed_attempts": [],
   "open_items": [
     {
       "id": "O-001",
