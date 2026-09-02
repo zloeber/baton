@@ -2,9 +2,15 @@ node_modules/
 dist/
 coverage/
 *.tsbuildinfo
+.baton/cache/
+.baton/index.sqlite
+.baton/index.sqlite-*
+.baton/local.json
 .threadline/cache/
 .threadline/index.sqlite
 .threadline/index.sqlite-*
 .threadline/local.json
 *.log
 .DS_Store
+__pycache__/
+.pytest_cache/

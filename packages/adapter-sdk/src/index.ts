@@ -1,5 +1,5 @@
 /**
- * @threadline/adapter-sdk (spec §15)
+ * @baton/adapter-sdk (spec §15)
  *
  * The universal integration is a shell command plus a Markdown skill; this
  * SDK exists for harnesses that can emit normalized events. All integrations
@@ -7,8 +7,8 @@
  * prompts, and vendor code must live in separate packages tested with
  * recorded fixtures.
  *
- * Implement `ThreadlineAdapter` and feed `AdapterEvent`s to
- * `@threadline/core`'s `evaluateEvent` (or the `threadline detect --event`
+ * Implement `BatonAdapter` and feed `AdapterEvent`s to
+ * `@baton/core`'s `evaluateEvent` (or the `baton detect --event`
  * CLI). Render the returned recommendation through `renderNotice` if the
  * harness exposes a UI affordance.
  */
@@ -17,18 +17,18 @@ export type {
   DetectorSignals,
   DetectorResult,
   SignalSnapshot,
-} from "@threadline/core";
+} from "@baton/core";
 export {
   evaluateEvent,
   nullSignals,
   SIGNAL_KEYS,
   SIGNAL_LABELS,
-} from "@threadline/core";
+} from "@baton/core";
 export type {
-  ThreadlineAdapter,
+  BatonAdapter,
   ProjectContext,
   SessionMetadata,
   RecommendationAction,
   RenderNoticeInput,
-} from "@threadline/core";
-export { ADAPTER_INTERFACE_VERSION } from "@threadline/core";
+} from "@baton/core";
+export { ADAPTER_INTERFACE_VERSION } from "@baton/core";

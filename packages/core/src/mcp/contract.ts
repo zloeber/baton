@@ -74,7 +74,7 @@ export interface HandoffResumeBrief {
 }
 
 export type McpToolName =
-  | "threadline_status"
+  | "baton_status"
   | "handoff_capture"
   | "handoff_validate"
   | "handoff_ready"

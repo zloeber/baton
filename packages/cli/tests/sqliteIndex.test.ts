@@ -2,14 +2,14 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { initProject, ProjectStore } from "@threadline/core";
+import { initProject, ProjectStore } from "@baton/core";
 import { SqliteIndex } from "../src/sqliteIndex.js";
 
 let root: string;
 let index: SqliteIndex;
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), "threadline-idx-"));
+  root = mkdtempSync(join(tmpdir(), "baton-idx-"));
   initProject(root);
   index = new SqliteIndex(root);
 });
@@ -45,7 +45,7 @@ describe("SqliteIndex", () => {
     });
     index.rebuild(store.indexEntries());
     index.close();
-    rmSync(join(root, ".threadline/index.sqlite"));
+    rmSync(join(root, ".baton/index.sqlite"));
     const again = new SqliteIndex(root);
     expect(again.query()).toHaveLength(0);
     again.rebuild(store.indexEntries());

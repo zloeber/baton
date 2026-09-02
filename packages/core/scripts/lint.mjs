@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// Architecture lint for @threadline/core: the domain library must stay free of
+// Architecture lint for @baton/core: the domain library must stay free of
 // MCP, terminal, vendor SDK, network, and canonical-data database dependencies.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
 const banned = [
-  /from\s+["'](?:@threadline\/(?:cli|mcp|adapter-sdk|adapter-generic)|commander|clipanion|yargs|better-sqlite3|node-sqlite3|sqlite3|@modelcontextprotocol\/sdk)["']/,
+  /from\s+["'](?:@baton\/(?:cli|mcp|adapter-sdk|adapter-generic)|commander|clipanion|yargs|better-sqlite3|node-sqlite3|sqlite3|@modelcontextprotocol\/sdk)["']/,
   /\b(?:require|import)\s*\(?\s*["'](?:@modelcontextprotocol|commander|better-sqlite3|sqlite3)["']/,
 ];
 

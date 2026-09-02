@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Threadline MCP server (spec §13): stdio transport, nine tools wrapping
- * @threadline/core. Writes are local project writes only; no generic shell
+ * Baton MCP server (spec §13): stdio transport, nine tools wrapping
+ * @baton/core. Writes are local project writes only; no generic shell
  * execution tool is exposed.
  */
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -17,7 +17,7 @@ import * as tools from "./tools.js";
 const ROOT_INPUT = { root: z.string().min(1).describe("Absolute project root directory") } as const;
 
 const ToolSchemas: Record<McpToolName, z.ZodTypeAny> = {
-  threadline_status: z.object(ROOT_INPUT),
+  baton_status: z.object(ROOT_INPUT),
   handoff_capture: z.object({
     ...ROOT_INPUT,
     work: z.object({
@@ -140,7 +140,7 @@ const ToolSchemas: Record<McpToolName, z.ZodTypeAny> = {
 };
 
 const TOOL_DESCRIPTIONS: Record<McpToolName, string> = {
-  threadline_status: "Threadline project status: config, latest handoff, git freshness, detector availability.",
+  baton_status: "Baton project status: config, latest handoff, git freshness, detector availability.",
   handoff_capture: "Create a draft handoff from structured work/summary/decisions/open items/evidence. Secrets are redacted per policy; creates a draft only.",
   handoff_validate: "Run deterministic validation checks (schema, policy, artifacts, evidence, lineage). recheck only runs allowlisted commands.",
   handoff_ready: "Promote a validated handoff to ready (immutable). Warning acknowledgement required when validation warns.",
@@ -153,7 +153,7 @@ const TOOL_DESCRIPTIONS: Record<McpToolName, string> = {
 
 function main(): void {
   const server = new Server(
-    { name: "threadline-mcp", version: "0.1.0" },
+    { name: "baton-mcp", version: "0.1.0" },
     { capabilities: { tools: {} } },
   );
 
@@ -183,8 +183,8 @@ function main(): void {
     try {
       let result;
       switch (name) {
-        case "threadline_status":
-          result = tools.threadlineStatus(ctx);
+        case "baton_status":
+          result = tools.batonStatus(ctx);
           break;
         case "handoff_capture":
           result = tools.handoffCapture(ctx, args as never);

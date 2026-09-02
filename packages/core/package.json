@@ -1,7 +1,7 @@
 {
-  "name": "@threadline/core",
+  "name": "@baton/core",
   "version": "0.1.0",
-  "description": "Threadline core domain library: schema, storage, validation, detector, renderers, lineage. No MCP/terminal/vendor dependencies.",
+  "description": "Baton core domain library: schema, storage, validation, detector, renderers, lineage. No MCP/terminal/vendor dependencies.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -12,12 +12,15 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "node ./scripts/lint.mjs",
     "test": "vitest run",
+    "emit:schemas": "node scripts/emitSchemas.mjs",
     "clean": "rm -rf dist"
   },
   "dependencies": {
@@ -25,7 +28,10 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "typescript": "^5.7.0",
-    "vitest": "^3.0.5"
+    "vitest": "^3.0.5",
+    "zod-to-json-schema": "^3.25.2"
   }
 }

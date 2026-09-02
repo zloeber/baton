@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Threadline CLI (spec §11). All commands support --json with stable output
+ * Baton CLI (spec §11). All commands support --json with stable output
  * and documented exit codes: 0 ok, 2 user/input, 3 validation, 4 not
  * found/conflict, 5 policy.
  */
 import { Command } from "commander";
 import { readFileSync } from "node:fs";
 import { resolve, join } from "node:path";
-import { configureLogger, logEvent } from "@threadline/core";
+import { configureLogger, logEvent, resolveBatonDir } from "@baton/core";
 import { loadContext, resolveRoot } from "./context.js";
 import { SqliteIndex } from "./sqliteIndex.js";
 import { exitCodeForError } from "./exitCodes.js";
@@ -16,11 +16,11 @@ import type { OutputOptions } from "./output.js";
 
 const program = new Command();
 program
-  .name("threadline")
+  .name("baton")
   .description("Portable continuity for AI-agent work.")
   .version("0.1.0")
   .option("--json", "emit stable machine-readable JSON", false)
-  .option("--project <dir>", "project root (defaults to nearest .threadline)");
+  .option("--project <dir>", "project root (defaults to nearest .baton)");
 
 interface GlobalOpts extends OutputOptions {
   project?: string;
@@ -42,7 +42,7 @@ function withIndex<T>(ctx: ReturnType<typeof loadContext>, fn: (index: SqliteInd
 
 function run(action: () => commands.CommandResult, json: boolean | undefined, eventName?: string): void {
   try {
-    configureLogger(join(resolveRoot(program.opts<GlobalOpts>().project), ".threadline", "cache", "log.jsonl"));
+    configureLogger(join(resolveBatonDir(resolveRoot(program.opts<GlobalOpts>().project)), "cache", "log.jsonl"));
     const r = action();
     if (json) process.stdout.write(JSON.stringify(r.payload, null, 2) + "\n");
     else if (r.text !== undefined) process.stdout.write(r.text);
@@ -51,6 +51,7 @@ function run(action: () => commands.CommandResult, json: boolean | undefined, ev
       // Observability (§17): event name + exit code only; no record bodies.
       logEvent(eventName, { exit: r.exitCode });
     }
+    void eventName;
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     if (json) {
@@ -65,11 +66,27 @@ function run(action: () => commands.CommandResult, json: boolean | undefined, ev
 // ------------------------------------------------------------------ init
 program
   .command("init")
-  .description("initialize .threadline in the current project")
+  .description("initialize .baton in the current project")
   .option("--project-id <id>", "explicit project id")
-  .action((opts: { projectId?: string }) => {
+  .option("--migrate-legacy", "also migrate a legacy .threadline/ directory (consent flag)", false)
+  .action((opts: { projectId?: string; migrateLegacy?: boolean }) => {
     const global = program.opts<GlobalOpts>();
-    run(() => commands.cmdInit(loadContext(global.project), opts.projectId), global.json, "init");
+    run(
+      () => commands.cmdInit(loadContext(global.project), opts.projectId, { migrateLegacy: opts.migrateLegacy }),
+      global.json,
+      "init",
+    );
+  });
+
+// -------------------------------------------------------------- migrate
+program
+  .command("migrate")
+  .description("move a legacy .threadline/ directory to .baton/ (consent required)")
+  .option("--dry-run", "show the migration plan without changing anything", false)
+  .action((opts: { dryRun?: boolean }) => {
+    const global = program.opts<GlobalOpts>();
+    const ctx = loadContext(global.project);
+    run(() => commands.cmdMigrate(ctx, opts), global.json, "migrate");
   });
 
 // --------------------------------------------------------------- session
@@ -96,9 +113,9 @@ const checkpoint = program.command("checkpoint").description("capture drafts dur
 checkpoint
   .command("create")
   .description("create a draft checkpoint from structured fields")
-  .requiredOption("--title <text>")
-  .requiredOption("--objective <text>")
-  .requiredOption("--current-state <text>")
+  .option("--title <text>", "title (required unless provided via --input)")
+  .option("--objective <text>", "objective (required unless provided via --input)")
+  .option("--current-state <text>", "current state (required unless provided via --input)")
   .option("--completed <items...>")
   .option("--constraints <items...>")
   .option("--open-item <json...>", "open items as JSON objects")
@@ -118,20 +135,26 @@ checkpoint
         : {};
       const parseAll = <T>(v: string | string[] | undefined): T[] =>
         v === undefined ? [] : (Array.isArray(v) ? v : [v]).map((s) => JSON.parse(s) as T);
-      return commands.cmdCheckpointCreate(ctx, {
-        title: (fileInput.title as string) ?? (opts.title as string),
-        objective: (fileInput.objective as string) ?? (opts.objective as string),
-        currentState: (fileInput.currentState as string) ?? (fileInput.current_state as string) ?? (opts.currentState as string),
-        completed: (fileInput.completed as string[]) ?? (opts.completed as string[]),
-        constraints: (fileInput.constraints as string[]) ?? (opts.constraints as string[]),
-        openItems: (fileInput.openItems as never[]) ?? parseAll(opts.openItem),
-        decisions: (fileInput.decisions as never[]) ?? parseAll(opts.decision),
-        evidence: (fileInput.evidence as never[]) ?? parseAll(opts.evidence),
-        artifacts: (fileInput.artifacts as never[]) ?? parseAll(opts.artifact),
-        risks: (fileInput.risks as never[]) ?? parseAll(opts.risk),
-        from: (fileInput.from as string) ?? (opts.from as string | undefined),
-        trigger: (opts.trigger as never) ?? "manual",
-      });
+      // Merge: flags win over file values; --input may carry everything.
+      const merged: Record<string, unknown> = {
+        ...fileInput,
+        ...(opts.title !== undefined ? { title: opts.title } : {}),
+        ...(opts.objective !== undefined ? { objective: opts.objective } : {}),
+        ...(opts.currentState !== undefined ? { currentState: opts.currentState } : {}),
+        ...(opts.completed !== undefined ? { completed: opts.completed } : {}),
+        ...(opts.constraints !== undefined ? { constraints: opts.constraints } : {}),
+        ...(opts.openItem !== undefined ? { openItems: parseAll(opts.openItem) } : {}),
+        ...(opts.decision !== undefined ? { decisions: parseAll(opts.decision) } : {}),
+        ...(opts.evidence !== undefined ? { evidence: parseAll(opts.evidence) } : {}),
+        ...(opts.artifact !== undefined ? { artifacts: parseAll(opts.artifact) } : {}),
+        ...(opts.risk !== undefined ? { risks: parseAll(opts.risk) } : {}),
+        ...((opts.from !== undefined || fileInput.from !== undefined) ? { from: (opts.from as string) ?? (fileInput.from as string) } : {}),
+        // Flag default ("manual") must not clobber an explicit payload trigger.
+        ...((fileInput.trigger !== undefined || opts.trigger !== undefined)
+          ? { trigger: (opts.trigger !== undefined && opts.trigger !== "manual") ? opts.trigger : (fileInput.trigger as never) ?? opts.trigger }
+          : { trigger: "manual" }),
+      };
+      return commands.cmdCheckpointCreate(ctx, merged as never);
     }, global.json);
   });
 

@@ -1,13 +1,13 @@
 {
-  "name": "@threadline/adapter-generic",
+  "name": "@baton/adapter-generic",
   "version": "0.1.0",
-  "description": "Reference shell/event adapter for Threadline: maps normalized JSON events and shell commands onto the CLI (spec §15).",
+  "description": "Reference shell/event adapter for Baton: maps normalized JSON events and shell commands onto the CLI (spec §15).",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "threadline-adapter-generic": "./dist/cli.js"
+    "baton-adapter-generic": "./dist/cli.js"
   },
   "files": ["dist"],
   "scripts": {
@@ -18,8 +18,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@threadline/adapter-sdk": "workspace:*",
-    "@threadline/core": "workspace:*"
+    "@baton/adapter-sdk": "workspace:*",
+    "@baton/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

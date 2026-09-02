@@ -3,7 +3,29 @@ import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
 import { atomicWriteJsonSync } from "./fsAtomic.js";
 
-export const THREADLINE_DIR = ".threadline";
+export const BATON_DIR = ".baton";
+/** Pre-rename storage directory; discovered read-only until migrated. */
+export const LEGACY_BATON_DIR = ".threadline";
+
+/**
+ * Storage-directory resolution (rename migration, spec-hermes-adapter §7):
+ * prefer `.baton`; use legacy `.threadline` only when it exists and `.baton`
+ * does not. New writes during the transition go to the resolved directory so
+ * state never splits across both.
+ */
+export function resolveBatonDirName(rootDir: string): string {
+  if (existsSync(join(rootDir, BATON_DIR))) return BATON_DIR;
+  if (existsSync(join(rootDir, LEGACY_BATON_DIR))) return LEGACY_BATON_DIR;
+  return BATON_DIR;
+}
+
+export function resolveBatonDir(rootDir: string): string {
+  return join(rootDir, resolveBatonDirName(rootDir));
+}
+
+export function hasLegacyBatonDir(rootDir: string): boolean {
+  return existsSync(join(rootDir, LEGACY_BATON_DIR));
+}
 
 /** Detector weights/thresholds (spec §9.2) — all tunable via config. */
 export const DetectorConfigSchema = z
@@ -83,7 +105,7 @@ export function defaultConfig(): Config {
 }
 
 export const STARTER_IGNORE_POLICY = [
-  "# Threadline starter policy: paths never captured as artifacts/evidence.",
+  "# Baton starter policy: paths never captured as artifacts/evidence.",
   "# Patterns are regular expressions matched against project-relative paths.",
   "\\.env(\\..+)?$",
   "credentials\\.json$",
@@ -99,40 +121,40 @@ export interface InitResult {
   configPath: string;
 }
 
-/** `threadline init`: scaffold .threadline without touching global Git config. */
+/** `baton init`: scaffold .baton without touching global Git config. */
 export function initProject(rootDir: string, projectId?: string): InitResult {
   const root = resolve(rootDir);
-  const dir = join(root, THREADLINE_DIR);
+  const dir = join(root, BATON_DIR);
   const handoffs = join(dir, "handoffs");
   const created: string[] = [];
   const existing: string[] = [];
 
   mkdirSync(handoffs, { recursive: true });
-  created.push(THREADLINE_DIR, `${THREADLINE_DIR}/handoffs/`);
+  created.push(BATON_DIR, `${BATON_DIR}/handoffs/`);
 
   const configPath = join(dir, "config.json");
   if (existsSync(configPath)) {
-    existing.push(`${THREADLINE_DIR}/config.json`);
+    existing.push(`${BATON_DIR}/config.json`);
   } else {
     const cfg = defaultConfig();
     cfg.project_id = projectId ?? `sha256:pending`;
     atomicWriteJsonSync(configPath, cfg);
-    created.push(`${THREADLINE_DIR}/config.json`);
+    created.push(`${BATON_DIR}/config.json`);
   }
 
   const policyPath = join(dir, "policy.json");
   if (!existsSync(policyPath)) {
     atomicWriteJsonSync(policyPath, { ignore: STARTER_IGNORE_POLICY });
-    created.push(`${THREADLINE_DIR}/policy.json`);
+    created.push(`${BATON_DIR}/policy.json`);
   } else {
-    existing.push(`${THREADLINE_DIR}/policy.json`);
+    existing.push(`${BATON_DIR}/policy.json`);
   }
 
   return { rootDir: root, created, existing, configPath };
 }
 
 export function configPath(rootDir: string): string {
-  return join(rootDir, THREADLINE_DIR, "config.json");
+  return join(resolveBatonDir(rootDir), "config.json");
 }
 
 export function isInitialized(rootDir: string): boolean {
@@ -146,7 +168,7 @@ export function loadConfig(rootDir: string): Config {
   const raw = JSON.parse(readFileSync(p, "utf8")) as Record<string, unknown>;
   const cfg = ConfigSchema.parse(raw);
   // Local machine-specific override, gitignored (spec §14).
-  const localPath = join(rootDir, THREADLINE_DIR, "local.json");
+  const localPath = join(resolveBatonDir(rootDir), "local.json");
   if (existsSync(localPath)) {
     const local = JSON.parse(readFileSync(localPath, "utf8")) as Record<string, unknown>;
     return ConfigSchema.parse({ ...cfg, ...local, detector: { ...cfg.detector, ...(local.detector as object) }, policy: { ...cfg.policy, ...(local.policy as object) } });

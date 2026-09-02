@@ -5,7 +5,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { atomicWriteJsonSync } from "./fsAtomic.js";
-import { THREADLINE_DIR } from "./projectInit.js";
+import { resolveBatonDir } from "./projectInit.js";
 
 export interface DetectorState {
   last_prompt_at: string | null;
@@ -19,7 +19,7 @@ export function emptyDetectorState(): DetectorState {
 }
 
 export function detectorStatePath(rootDir: string): string {
-  return join(rootDir, THREADLINE_DIR, "cache", "detector-state.json");
+  return join(resolveBatonDir(rootDir), "cache", "detector-state.json");
 }
 
 export function loadDetectorState(rootDir: string): DetectorState {

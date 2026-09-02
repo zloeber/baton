@@ -1,17 +1,17 @@
-# Threadline
+# Baton
 
 **Portable continuity for AI-agent work.**  
 *A local-first, harness-agnostic automatic session-handoff layer.*
 
 **Status:** implementation specification / POC v0.1  
-**Repository name:** `threadline`  
-**Primary differentiator:** Threadline does not replace an agent harness. It detects when a session should end, packages verified working state into a portable handoff, and lets the next agent/session resume with a clean, purposeful context.
+**Repository name:** `baton`  
+**Primary differentiator:** Baton does not replace an agent harness. It detects when a session should end, packages verified working state into a portable handoff, and lets the next agent/session resume with a clean, purposeful context.
 
 ---
 
 ## 1. Vision
 
-Long-running agent work should be continuous even when individual contexts, models, terminals, or harnesses are not. Threadline makes continuity an explicit, inspectable project artifact rather than an accidental by-product of chat history or an opaque context compaction.
+Long-running agent work should be continuous even when individual contexts, models, terminals, or harnesses are not. Baton makes continuity an explicit, inspectable project artifact rather than an accidental by-product of chat history or an opaque context compaction.
 
 The product is a small local tool that works alongside Claude Code, Codex, Cursor, Gemini CLI, and open-source harnesses. It records the minimum durable state needed to continue work correctly: intent, verified facts, decisions, changed artifacts, evidence, risks, and the next executable actions. A fresh session can hydrate from that record without importing a long, lossy conversation transcript.
 
@@ -26,7 +26,7 @@ Agent users also regularly switch:
 - from one parallel workstream to another; and
 - between human and agent ownership.
 
-Today that transition is often manual: copy a prompt, summarize a chat, or hope a repository contains enough clues. Threadline provides a portable, validated, versioned continuity record and an optional automatic handoff trigger.
+Today that transition is often manual: copy a prompt, summarize a chat, or hope a repository contains enough clues. Baton provides a portable, validated, versioned continuity record and an optional automatic handoff trigger.
 
 ## 3. Goals and non-goals
 
@@ -52,7 +52,7 @@ Today that transition is often manual: copy a prompt, summarize a chat, or hope 
 ## 4. Product principles
 
 - **State, not story:** retain decisions and evidence, not a narrative of every turn.
-- **Portable by default:** a handoff must remain useful as a file without Threadline installed.
+- **Portable by default:** a handoff must remain useful as a file without Baton installed.
 - **Structured first, rendered second:** write canonical data; render prompts/Markdown from it.
 - **Human retains control:** automation recommends and prepares; users approve consequential boundaries.
 - **Evidence earns trust:** every important claim should point to a command, file, test, URL, or user decision.
@@ -86,12 +86,12 @@ Harness / editor / human
   Claude Code · Codex · Cursor · Gemini CLI · custom agent
                          │ hooks, skill, MCP, or direct CLI
                          ▼
-                 Threadline core CLI
+                 Baton core CLI
        capture · validate · score · render · lineage
                          │
           ┌──────────────┴───────────────┐
           ▼                              ▼
- .threadline/handoffs/*.json       .threadline/index.sqlite
+ .baton/handoffs/*.json       .baton/index.sqlite
  canonical, git-friendly records   rebuildable local index
           │
           └──────────────┬───────────────┘
@@ -106,15 +106,15 @@ Implementation: TypeScript, Node.js 20+, `zod` for schema validation, `commander
 
 ### 7.1 Format and storage contract
 
-The canonical on-disk format is UTF-8 JSON, schema versioned, one handoff per file. JSON is chosen for reliable validation and MCP interchange; `threadline show --format yaml|md|prompt` provides friendly views. Unknown top-level fields must be preserved by readers for forward compatibility.
+The canonical on-disk format is UTF-8 JSON, schema versioned, one handoff per file. JSON is chosen for reliable validation and MCP interchange; `baton show --format yaml|md|prompt` provides friendly views. Unknown top-level fields must be preserved by readers for forward compatibility.
 
-File name: `.threadline/handoffs/<created-at>--<short-id>.json` (UTC RFC 3339 timestamp with punctuation removed). The file contents include the definitive UUID.
+File name: `.baton/handoffs/<created-at>--<short-id>.json` (UTC RFC 3339 timestamp with punctuation removed). The file contents include the definitive UUID.
 
 ### 7.2 JSON Schema–shaped model
 
 ```json
 {
-  "$schema": "https://threadline.dev/schemas/handoff/v0.1.json",
+  "$schema": "https://baton.dev/schemas/handoff/v0.1.json",
   "schema_version": "0.1",
   "id": "018f...uuidv7",
   "kind": "handoff",
@@ -204,17 +204,17 @@ Required fields for `draft`: schema/id/kind/status/timestamps/project/work/summa
 
 ## 8. Lifecycle
 
-1. `threadline init` creates `.threadline/config.json`, `.threadline/handoffs/`, and a starter ignore policy. It must not modify a global Git configuration.
-2. A user or adapter opens a session with `threadline session begin` (optional in MVP). It records only metadata allowed by policy.
+1. `baton init` creates `.baton/config.json`, `.baton/handoffs/`, and a starter ignore policy. It must not modify a global Git configuration.
+2. A user or adapter opens a session with `baton session begin` (optional in MVP). It records only metadata allowed by policy.
 3. During work, `checkpoint` captures a draft from supplied structured fields, optionally records Git state and command/test evidence.
 4. The detector calculates **handoff pressure** and **handoff readiness**. It may issue a prompt or invoke a configurable callback; it never kills a process or starts another agent in MVP.
 5. `validate` runs deterministic checks. A ready handoff is persisted immutably and receives a resume token/ID.
-6. The user starts any new session and runs `threadline resume <id>` or an adapter calls the equivalent MCP tool. It renders a compact brief, marks the record `resumed` in the local index, and may create a child work session.
+6. The user starts any new session and runs `baton resume <id>` or an adapter calls the equivalent MCP tool. It renders a compact brief, marks the record `resumed` in the local index, and may create a child work session.
 7. The new session either continues from the handoff or forks it. Completing a fork creates a child; combining work requires `merge` with a written resolution summary.
 
 ## 9. Automatic handoff detection and scoring
 
-Threadline supports partial signals. It must plainly display unavailable signals rather than guessing.
+Baton supports partial signals. It must plainly display unavailable signals rather than guessing.
 
 ### 9.1 Inputs (normalized 0–1)
 
@@ -247,11 +247,11 @@ Default behaviors:
 - An explicit request always creates a draft, regardless of score.
 - Repeated prompts are suppressed for 20 minutes or until a material event occurs.
 
-All weights and thresholds belong in `.threadline/config.json`. The detector must store the score, inputs actually used, and reasons in the handoff; this makes its recommendation auditable and tunable.
+All weights and thresholds belong in `.baton/config.json`. The detector must store the score, inputs actually used, and reasons in the handoff; this makes its recommendation auditable and tunable.
 
 ## 10. Validation and freshness
 
-`threadline validate <id>` runs:
+`baton validate <id>` runs:
 
 1. **Schema:** valid version, UUID, enum values, required fields, referential integrity (`evidence_ids`, parent IDs).
 2. **Policy:** no fields violate configured secret/path/privacy policies; no raw transcript field is accepted in v0.1.
@@ -270,20 +270,20 @@ On resume, perform a fast freshness check against current Git head/path hashes. 
 All commands support `--json` with stable machine-readable output and exit codes: `0` success, `2` user/input error, `3` validation failure, `4` not found/conflict, `5` policy/security block.
 
 ```text
-threadline init [--project-id <id>]
-threadline session begin [--harness <name>] [--session-id <opaque-id>]
-threadline checkpoint create --title <text> --objective <text> [--from <id>]
-threadline handoff prepare [--from <checkpoint>] [--trigger manual|threshold|hook]
-threadline handoff validate <id> [--recheck]
-threadline handoff ready <id> [--accept-warnings <reason>]
-threadline handoff list [--status ready] [--work <query>]
-threadline handoff show <id> [--format json|yaml|md|prompt]
-threadline resume <id> [--format prompt] [--mark-resumed]
-threadline fork <id> --label <label>
-threadline merge <id> <id> [--title <text>] [--resolution-file <path>]
-threadline detect [--event <json>] [--prepare]
-threadline doctor
-threadline gc [--dry-run]  # only removes rebuildable local index/cache, never canonical records
+baton init [--project-id <id>]
+baton session begin [--harness <name>] [--session-id <opaque-id>]
+baton checkpoint create --title <text> --objective <text> [--from <id>]
+baton handoff prepare [--from <checkpoint>] [--trigger manual|threshold|hook]
+baton handoff validate <id> [--recheck]
+baton handoff ready <id> [--accept-warnings <reason>]
+baton handoff list [--status ready] [--work <query>]
+baton handoff show <id> [--format json|yaml|md|prompt]
+baton resume <id> [--format prompt] [--mark-resumed]
+baton fork <id> --label <label>
+baton merge <id> <id> [--title <text>] [--resolution-file <path>]
+baton detect [--event <json>] [--prepare]
+baton doctor
+baton gc [--dry-run]  # only removes rebuildable local index/cache, never canonical records
 ```
 
 MVP input ergonomics: interactive prompts when attached to a terminal; flags and `--input <json-file>` for automation. `handoff prepare` should prefill Git metadata, changed files, current working objective/session data, and a template for the operator/agent to complete—not invent summary facts.
@@ -292,9 +292,9 @@ MVP input ergonomics: interactive prompts when attached to a terminal; flags and
 
 ## 12. Agent skill
 
-Ship a portable `skills/threadline/SKILL.md` plus harness wrappers. The skill must direct agents to:
+Ship a portable `skills/baton/SKILL.md` plus harness wrappers. The skill must direct agents to:
 
-1. Read `.threadline/config.json` and the selected/most recent ready handoff at session start.
+1. Read `.baton/config.json` and the selected/most recent ready handoff at session start.
 2. Treat its constraints, decisions, open items, and freshness status as working context, not unquestionable truth.
 3. Add evidence as work occurs; never fabricate a test result, command result, or decision.
 4. Checkpoint at meaningful boundaries; prepare a handoff before declared context exhaustion, agent transfer, extended pause, or after repeated blockage.
@@ -306,11 +306,11 @@ The skill should include reusable command examples but no vendor-specific instru
 
 ## 13. MCP server and tools
 
-Package `@threadline/mcp` as a stdio MCP server. It calls the same core library and honors project root/policy restrictions. Every tool returns structured content plus a concise text summary.
+Package `@baton/mcp` as a stdio MCP server. It calls the same core library and honors project root/policy restrictions. Every tool returns structured content plus a concise text summary.
 
 | Tool | Inputs | Result / guardrail |
 |---|---|---|
-| `threadline_status` | project root | config, active/latest handoff, freshness, detector availability. |
+| `baton_status` | project root | config, active/latest handoff, freshness, detector availability. |
 | `handoff_capture` | work/summary/decisions/open items/evidence, optional parent | creates a draft only; validates input and redacts policy matches. |
 | `handoff_validate` | id, optional `recheck` | check report; recheck requires configured allowlist. |
 | `handoff_ready` | id, warning acknowledgement | promotes only after valid checks. |
@@ -327,7 +327,7 @@ Do not expose a generic shell execution tool. Command evidence is supplied by th
 ### Storage
 
 ```text
-.threadline/
+.baton/
   config.json
   handoffs/
     20260902T143000Z--018f.json
@@ -336,7 +336,7 @@ Do not expose a generic shell execution tool. Command evidence is supplied by th
   cache/                       # gitignored; never canonical
 ```
 
-Canonical handoffs may be committed to Git when teams want an audit trail. For a personal/local workflow, `.threadline/handoffs/` can be gitignored. `config.json` defaults to safe project-shareable settings; machine-specific configuration goes in an ignored local override.
+Canonical handoffs may be committed to Git when teams want an audit trail. For a personal/local workflow, `.baton/handoffs/` can be gitignored. `config.json` defaults to safe project-shareable settings; machine-specific configuration goes in an ignored local override.
 
 The SQLite index accelerates queries and stores ephemeral session/prompt-suppression data. It can always be rebuilt from JSON handoffs, so JSON records remain the source of truth.
 
@@ -355,7 +355,7 @@ The universal integration is a shell command plus a Markdown skill. All integrat
 
 | Environment | MVP integration | Automation signal | Resume path |
 |---|---|---|---|
-| Claude Code | Installable project skill; optional hooks wrapper if available | explicit command, stop/pre-compact hook, harness-provided usage if exposed | `/threadline-resume`-style skill command or `threadline resume`. |
+| Claude Code | Installable project skill; optional hooks wrapper if available | explicit command, stop/pre-compact hook, harness-provided usage if exposed | `/baton-resume`-style skill command or `baton resume`. |
 | Codex | Project skill/instructions and MCP configuration | explicit command; agent/session boundary where exposed | MCP `handoff_resume` or CLI-generated brief. |
 | Cursor | Project rules/skill plus terminal task | explicit action, user-triggered new chat; avoid relying on undocumented context metrics | paste/rendered resume brief in new chat. |
 | Gemini CLI | Project command/extension wrapper and MCP if supported | explicit command, lifecycle hook if stable | CLI or MCP resume. |
@@ -371,13 +371,13 @@ Adapters implement a tiny interface: `getProjectContext()`, `getSessionMetadata(
 - Treat evidence output as potentially sensitive: store a digest plus a bounded/redacted summary by default, not raw command output.
 - Use opaque session IDs; hash or omit externally supplied IDs if configured.
 - No network, telemetry, or cloud sync in the MVP. Any future sync must be opt-in, encrypted in transit, project-selective, and retain the same redaction pipeline.
-- Support `threadline audit` to enumerate data fields, redactions, external refs, and records eligible for user-directed deletion. Do not add automatic destructive retention in v0.1.
+- Support `baton audit` to enumerate data fields, redactions, external refs, and records eligible for user-directed deletion. Do not add automatic destructive retention in v0.1.
 
 ## 17. Observability
 
-Local structured logs (JSONL) are disabled by default; enable with `THREADLINE_LOG=info|debug` or config. Logs must contain record IDs and event names, never handoff body values, command output, or secrets.
+Local structured logs (JSONL) are disabled by default; enable with `BATON_LOG=info|debug` or config. Logs must contain record IDs and event names, never handoff body values, command output, or secrets.
 
-Capture local metrics in the index only: detector recommendations/preparations, validation outcomes, time-to-ready, resume count, stale-on-resume count, and adapter signal availability. Provide `threadline metrics --local` and `threadline doctor`. No outbound analytics.
+Capture local metrics in the index only: detector recommendations/preparations, validation outcomes, time-to-ready, resume count, stale-on-resume count, and adapter signal availability. Provide `baton metrics --local` and `baton doctor`. No outbound analytics.
 
 ## 18. Testing strategy
 
@@ -434,7 +434,7 @@ Hosted sync/team sharing, visual lineage UI, native IDE extensions, semantic mer
 ## 20. Repository layout
 
 ```text
-threadline/
+baton/
   README.md
   SPEC.md
   package.json
@@ -446,7 +446,7 @@ threadline/
     adapter-sdk/          # normalized event and adapter interfaces
     adapter-generic/      # reference shell/event adapter
   skills/
-    threadline/SKILL.md
+    baton/SKILL.md
     claude-code/
     codex/
     cursor/
@@ -488,7 +488,7 @@ Use these as repository-level instructions for implementation agents:
 
 The MVP is ready for a public POC when all of the following are demonstrably true:
 
-1. A fresh local Git project can run `threadline init`, create a draft, validate it, mark it ready, and render a resume brief using only the CLI.
+1. A fresh local Git project can run `baton init`, create a draft, validate it, mark it ready, and render a resume brief using only the CLI.
 2. The ready JSON conforms to `handoff-v0.1.json`, is human-readable, contains no full transcript, and remains usable if the SQLite index is deleted and rebuilt.
 3. `resume` clearly flags a changed Git head or changed referenced artifact before presenting next actions.
 4. A secret-like value supplied in a capture payload is blocked or redacted according to policy, with the redaction recorded and without persisting the original value.
@@ -507,12 +507,12 @@ The MVP is ready for a public POC when all of the following are demonstrably tru
 4. Implement `init`, `handoff prepare`, `validate`, `ready`, `show`, and `resume` commands.
 5. Implement safe policy/redaction engine and path containment checks.
 6. Add generic `detect --event` scoring and prompt-suppression index state.
-7. Ship `skills/threadline/SKILL.md` and generic integration guide.
+7. Ship `skills/baton/SKILL.md` and generic integration guide.
 8. Add MCP server parity layer.
 9. Add lineage fork/merge and graph/list rendering.
 10. Add vendor examples only after generic E2E flow is stable.
 
 ## 24. Success measure
 
-The POC succeeds when a developer can intentionally or automatically prepare a handoff near a session boundary, begin a new session in a different compatible harness, and make correct progress within minutes—without re-reading the prior conversation and without Threadline owning their agent workflow.
+The POC succeeds when a developer can intentionally or automatically prepare a handoff near a session boundary, begin a new session in a different compatible harness, and make correct progress within minutes—without re-reading the prior conversation and without Baton owning their agent workflow.
 

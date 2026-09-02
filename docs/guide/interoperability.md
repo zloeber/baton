@@ -7,10 +7,10 @@ depends on a vendor release.
 
 ## The adapter contract
 
-Adapters implement `ThreadlineAdapter` from `@threadline/adapter-sdk`:
+Adapters implement `BatonAdapter` from `@baton/adapter-sdk`:
 
 ```ts
-interface ThreadlineAdapter {
+interface BatonAdapter {
   getProjectContext(): Promise<ProjectContext>;        // root, id, initialized
   getSessionMetadata(): Promise<SessionMetadata>;      // harness, opaque id, model
   subscribeEvents?(handler: (event: AdapterEvent) => void): () => void;
@@ -24,8 +24,8 @@ Rules:
 - `AdapterEvent` carries only normalized 0–1 signals plus the harness name and
   an optional opaque session id.
 - Evaluate events with `evaluateEvent(event, config, lastPromptAt,
-  previousPressure)` from `@threadline/core`, or shell out to
-  `threadline detect --event '<json>'` for identical semantics, cooldown
+  previousPressure)` from `@baton/core`, or shell out to
+  `baton detect --event '<json>'` for identical semantics, cooldown
   handling, and JSON contract.
 - Automation **recommends and prepares**; it never terminates a session or
   launches another agent.
@@ -34,7 +34,7 @@ Rules:
 
 | Environment | MVP integration | Automation signal | Resume path |
 |---|---|---|---|
-| Claude Code | Project skill; optional `PreCompact` hook | explicit command; hook event | `/threadline-resume`-style command or `threadline resume` |
+| Claude Code | Project skill; optional `PreCompact` hook | explicit command; hook event | `/baton-resume`-style command or `baton resume` |
 | Codex | Project instructions + MCP config | explicit command; session boundary | MCP `handoff_resume` or CLI brief |
 | Cursor | Project rule + terminal task | explicit action; user-triggered new chat | paste rendered resume brief |
 | Gemini CLI | Project command/extension; MCP if supported | explicit command; lifecycle hook if stable | CLI or MCP resume |

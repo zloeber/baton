@@ -1,11 +1,11 @@
 {
-  "name": "@threadline/cli",
+  "name": "@baton/cli",
   "version": "0.1.0",
-  "description": "Threadline CLI: capture, validate, prepare, show, resume, fork, merge, detect.",
+  "description": "Baton CLI: capture, validate, prepare, show, resume, fork, merge, detect.",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "threadline": "./dist/main.js"
+    "baton": "./dist/main.js"
   },
   "main": "./dist/main.js",
   "types": "./dist/main.d.ts",
@@ -21,7 +21,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@threadline/core": "workspace:*",
+    "@baton/core": "workspace:*",
     "better-sqlite3": "^12.4.1",
     "commander": "^14.0.1"
   },

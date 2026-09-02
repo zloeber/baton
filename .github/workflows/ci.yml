@@ -25,3 +25,12 @@ jobs:
       - run: pnpm lint
       - run: pnpm build
       - run: pnpm test
+      - name: Set up Python for Hermes bridge tests
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pipx install pytest || pip install pytest
+      - name: Run Hermes bridge contract + parity tests
+        run: |
+          python -m pip install --quiet pytest
+          pytest tests/python

@@ -1,5 +1,5 @@
 /**
- * MCP tool implementations (spec §13). These wrap @threadline/core with the
+ * MCP tool implementations (spec §13). These wrap @baton/core with the
  * same semantics as the CLI commands, honoring project root/policy limits.
  * Every tool returns structured content plus a concise text summary.
  */
@@ -31,7 +31,7 @@ import {
   saveDetectorState,
   transitionHandoff,
   Validator,
-} from "@threadline/core";
+} from "@baton/core";
 import {
   HandoffCaptureRequest,
   HandoffResumeBrief,
@@ -54,7 +54,7 @@ export function makeContext(rootDir: string): ToolContext {
     config,
     requireInitialized: () => {
       if (!isInitialized(rootDir)) {
-        const e = new Error("project not initialized; call threadline_init or run `threadline init`");
+        const e = new Error("project not initialized; call baton_init or run `baton init`");
         (e as unknown as { code: string }).code = "POLICY";
         throw e;
       }
@@ -81,9 +81,9 @@ function guard<T>(ctx: ToolContext): McpToolResult<T> | null {
   }
 }
 
-// ------------------------------------------------------------ threadline_status
+// ------------------------------------------------------------ baton_status
 
-export function threadlineStatus(ctx: ToolContext): McpToolResult {
+export function batonStatus(ctx: ToolContext): McpToolResult {
   const initialized = isInitialized(ctx.rootDir);
   const handoffs = initialized ? ctx.store.listAll() : [];
   const latest = handoffs.length > 0 ? handoffs[handoffs.length - 1]! : null;
@@ -99,11 +99,11 @@ export function threadlineStatus(ctx: ToolContext): McpToolResult {
     },
     initialized
       ? `Initialized. ${handoffs.length} handoff(s); latest: ${latest ? `${latest.id.slice(0, 8)} (${latest.status}) ${latest.work.title}` : "none"}. Git head: ${git.head ?? "n/a"}.`
-      : "Not initialized; run `threadline init` in this project.",
+      : "Not initialized; run `baton init` in this project.",
   );
 }
 
-export function threadlineInit(ctx: ToolContext): McpToolResult {
+export function batonInit(ctx: ToolContext): McpToolResult {
   const r = initProject(ctx.rootDir);
   return ok(r, `Initialized ${ctx.rootDir}.`);
 }

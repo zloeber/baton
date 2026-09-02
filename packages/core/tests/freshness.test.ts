@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 function project(): string {
-  dir = mkdtempSync(join(tmpdir(), "threadline-fresh-"));
+  dir = mkdtempSync(join(tmpdir(), "baton-fresh-"));
   mkdirSync(join(dir, "src/auth"), { recursive: true });
   return dir;
 }

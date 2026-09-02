@@ -1,0 +1,4 @@
+name: baton
+version: "0.1.0"
+description: "Baton context engine: replaces Hermes' built-in compressor with portable, validated handoff compaction (see spec-hermes-adapter.md)."
+requires_env: []

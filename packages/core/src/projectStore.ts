@@ -17,6 +17,7 @@ import {
 import { uuidv7, shortId } from "./ids.js";
 import { filenameTimestamp } from "./time.js";
 import { atomicWriteJsonSync, readJsonSync } from "./fsAtomic.js";
+import { resolveBatonDirName } from "./projectInit.js";
 
 const HANDOFFS_DIRNAME = "handoffs";
 
@@ -64,9 +65,13 @@ export class ProjectStore {
   readonly rootDir: string;
   private readonly handoffsDir: string;
 
-  constructor(rootDir: string, threadlineDirName = ".threadline") {
+  constructor(rootDir: string, batonDirName?: string) {
     this.rootDir = resolve(rootDir);
-    this.handoffsDir = join(this.rootDir, threadlineDirName, HANDOFFS_DIRNAME);
+    this.handoffsDir = join(
+      this.rootDir,
+      batonDirName ?? resolveBatonDirName(this.rootDir),
+      HANDOFFS_DIRNAME,
+    );
   }
 
   get handoffsPath(): string {

@@ -1,8 +1,8 @@
 /**
  * Local structured logging (spec §17). Disabled by default; enable with
- * THREADLINE_LOG=info|debug. Logs contain record ids and event names only —
+ * BATON_LOG=info|debug. Logs contain record ids and event names only —
  * never handoff body values, command output, or secrets. Output is JSONL
- * appended to a caller-provided sink (the CLI uses .threadline/cache/log.jsonl).
+ * appended to a caller-provided sink (the CLI uses .baton/cache/log.jsonl).
  */
 import { appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
@@ -15,7 +15,7 @@ let sinkPath: string | null = null;
 let level: number = 0;
 
 function envLevel(): number {
-  const raw = process.env.THREADLINE_LOG;
+  const raw = process.env.BATON_LOG;
   if (raw === "info") return LEVELS.info;
   if (raw === "debug") return LEVELS.debug;
   return 0;
@@ -23,7 +23,7 @@ function envLevel(): number {
 
 /**
  * Configure logging once per process. Disabled by default (§17): enabled only
- * when THREADLINE_LOG is set or the project config supplies a level.
+ * when BATON_LOG is set or the project config supplies a level.
  * Pass null to disable entirely.
  */
 export function configureLogger(sink: string | null, configuredLevel: LogLevel | null = null): void {

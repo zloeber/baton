@@ -3,7 +3,7 @@
 All configuration lives inside the project:
 
 ```text
-.threadline/
+.baton/
   config.json     # shareable defaults (commit-safe)
   local.json      # machine-specific override (gitignored)
   policy.json     # starter ignore policy for capture
@@ -74,6 +74,6 @@ run without the flag.
 
 ## Logging
 
-Local JSONL logging is disabled by default. Set `THREADLINE_LOG=info|debug`
+Local JSONL logging is disabled by default. Set `BATON_LOG=info|debug`
 to enable. Logs contain record ids and event names only — never handoff body
 values, command output, or secrets.

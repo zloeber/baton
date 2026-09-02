@@ -3,4 +3,4 @@ export type {
   HandoffCaptureRequest,
   HandoffResumeBrief,
   McpToolName,
-} from "@threadline/core";
+} from "@baton/core";

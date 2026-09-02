@@ -5,8 +5,8 @@
 - Default scope is the **current project root**. Artifact and file-evidence
   paths are rejected when they escape root (`policy.paths` validation check,
   exit code 3). Additional roots may be trusted explicitly via
-  `.threadline/config.json` → `policy.allowedRoots`.
-- Threadline never reads or serializes environment variables, credentials,
+  `.baton/config.json` → `policy.allowedRoots`.
+- Baton never reads or serializes environment variables, credentials,
   `.env` contents, auth headers, private prompts, clipboard contents, or full
   conversation transcripts.
 
@@ -47,9 +47,9 @@ redaction pipeline.
 
 ## Deletion and audit
 
-`threadline audit [id]` enumerates per record: field counts, redactions,
+`baton audit [id]` enumerates per record: field counts, redactions,
 external refs, local paths, and transcript-field scan results.
-`threadline gc` removes only the rebuildable SQLite index and cache; canonical
+`baton gc` removes only the rebuildable SQLite index and cache; canonical
 records are never removed automatically. Record-level deletion is
 user-directed (`audit` identifies candidates; removal is a manual, explicit
 step on the JSON file).

@@ -1,5 +1,5 @@
 /**
- * Canonical Threadline handoff schema (spec §7).
+ * Canonical Baton handoff schema (spec §7).
  *
  * Invariants enforced here:
  * - Canonical data is UTF-8 JSON, schema-versioned, one handoff per file.
@@ -10,7 +10,7 @@
 import { z } from "zod";
 
 export const SCHEMA_VERSION = "0.1";
-export const SCHEMA_ID = "https://threadline.dev/schemas/handoff/v0.1.json";
+export const SCHEMA_ID = "https://baton.dev/schemas/handoff/v0.1.json";
 
 export const HandoffStatus = z.enum([
   "draft",

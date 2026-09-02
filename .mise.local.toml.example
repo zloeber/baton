@@ -1,0 +1,4 @@
+# Machine-local overrides (copy to .mise.local.toml). Gitignored.
+# Example: keep the pnpm store out of a synced/cloud folder.
+# [env]
+# PNPM_HOME = "/some/fast/disk/pnpm"

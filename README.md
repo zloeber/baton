@@ -1,15 +1,15 @@
-# Threadline
+# Baton
 
 **Portable continuity for AI-agent work.**
 A local-first, harness-agnostic, automatic session-handoff layer.
 
-Threadline does not replace your agent harness. It detects when a session
+Baton does not replace your agent harness. It detects when a session
 should end, packages verified working state into a portable handoff, and lets
 the next agent or session resume with a clean, purposeful context — without
 re-reading the old chat.
 
 - **Local-first & inspectable** — handoffs are human-readable JSON files under
-  `.threadline/handoffs/`; an optional SQLite index is rebuildable and never
+  `.baton/handoffs/`; an optional SQLite index is rebuildable and never
   the source of truth.
 - **Verified continuity** — decisions vs. evidence are separated; schema,
   paths, secrets, git state, and freshness are validated before a handoff is
@@ -19,8 +19,10 @@ re-reading the old chat.
 - **Safe automation** — the detector recommends and prepares drafts; it never
   terminates or launches sessions.
 
-See [`SPEC.md`](./SPEC.md) for the full product and implementation
-specification.
+The normative documents are the [core spec](./docs/guide/spec.md) and the
+[Hermes adapter spec](./docs/guide/hermes-adapter-spec.md); the full
+documentation site lives in [`docs/`](./docs) and is published to GitHub
+Pages on every push to `main`.
 
 ## Repository layout
 
@@ -31,11 +33,15 @@ packages/
   mcp/         stdio MCP server (9 tools) wrapping core
   adapter-sdk/ normalized event & adapter interfaces
   adapter-generic/ reference shell/event adapter
+plugins/
+  context_engine/baton/  Hermes agent context-engine plugin (Python bridge)
 skills/        portable agent skill + per-harness wrappers
-schemas/       canonical handoff-v0.1.json JSON Schema
+schemas/       GENERATED JSON Schemas (emit from Zod; never hand-edit)
 examples/      minimal project, ready handoff, adapter events
-docs/          interoperability, security, configuration
-tests/         fixtures + end-to-end suite
+docs/          VitePress site (guide, specs, schema reference) → GitHub Pages
+tests/         e2e suite + Python bridge contract suite
+AGENTS.md      contributor field guide: map, dev graph, sharp edges
+mise.toml      pinned toolchain + dev task graph
 ```
 
 ## The five-minute handoff
@@ -47,13 +53,13 @@ Requires Node 20+. From the repo root: `pnpm install && pnpm build`.
 cd /path/to/your-project
 
 # Adjust the path to your checkout, or `npm i -g` the CLI package:
-alias threadline="node /path/to/threadline/packages/cli/dist/main.js"
+alias baton="node /path/to/baton/packages/cli/dist/main.js"
 
-# 2. Initialize Threadline (creates .threadline/, touches no global git config)
-threadline init
+# 2. Initialize Baton (creates .baton/, touches no global git config)
+baton init
 
 # 3. Work with your agent as usual… then capture a checkpoint at a boundary
-threadline checkpoint create \
+baton checkpoint create \
   --title "Implement resumable OAuth callback validation" \
   --objective "Reject replayed OAuth state parameters with timing-safe comparison" \
   --current-state "Helper implemented; integration fixture still pending" \
@@ -65,12 +71,12 @@ threadline checkpoint create \
 # → prints the draft id, e.g. 0198c0de-…
 
 # 4. Validate, then mark ready (immutable afterwards)
-threadline handoff validate 0198c0de
-threadline handoff ready 0198c0de
+baton handoff validate 0198c0de
+baton handoff ready 0198c0de
 
 # 5. Open a NEW terminal/session (same project, any harness) and resume
-threadline handoff list --status ready
-threadline resume 0198c0de
+baton handoff list --status ready
+baton resume 0198c0de
 ```
 
 The resume brief is a bounded, vendor-neutral prompt: objective, current
@@ -78,9 +84,9 @@ state, constraints, decisions, artifacts, evidence, risks, the first next
 action, and a final instruction to verify freshness. If the repository moved
 since capture, a prominent **STALE** section is rendered first.
 
-Prefer paste-into-chat? `threadline resume <id> --format md` renders the full
+Prefer paste-into-chat? `baton resume <id> --format md` renders the full
 record as Markdown, or feed it to your agent through the skill in
-[`skills/threadline/SKILL.md`](./skills/threadline/SKILL.md).
+[`skills/baton/SKILL.md`](./skills/baton/SKILL.md).
 
 ## Agents and MCP
 
@@ -88,10 +94,10 @@ Start the stdio MCP server and register it with Codex, Gemini CLI, or any MCP
 client:
 
 ```bash
-node /path/to/threadline/packages/mcp/dist/server.js
+node /path/to/baton/packages/mcp/dist/server.js
 ```
 
-Tools: `threadline_status`, `handoff_capture`, `handoff_validate`,
+Tools: `baton_status`, `handoff_capture`, `handoff_validate`,
 `handoff_ready`, `handoff_resume`, `handoff_list`, `handoff_fork`,
 `handoff_merge`, `handoff_detect`. The server performs local project writes
 only, requires an initialized project, and exposes no shell-execution tool.
@@ -99,7 +105,7 @@ only, requires an initialized project, and exposes no shell-execution tool.
 ## Automatic detection
 
 ```bash
-threadline detect --event '{"harness":"generic","signals":{"contextPressure":0.92,"resumeReadiness":0.9}}'
+baton detect --event '{"harness":"generic","signals":{"contextPressure":0.92,"resumeReadiness":0.9}}'
 ```
 
 Scores are deterministic and auditable: the output shows the inputs actually
@@ -107,9 +113,13 @@ used, the reasons, and the recommended action (`none` / `recommend` /
 `prepare`). Add `--prepare` to create a draft at `prepare` level. Explicit
 requests always create a draft; repeated prompts are suppressed for 20 minutes
 or until a material change. Weights and thresholds live in
-`.threadline/config.json` (see `docs/configuration.md`).
+`.baton/config.json` (see `docs/guide/configuration.md`).
 
 ## Development
+
+Requires Node 22+ and pnpm 10+. With [mise](https://mise.jdx.dev) installed,
+`mise install` pins the whole toolchain (node, pnpm, python, pytest) and
+`mise tasks` lists the task graph.
 
 ```bash
 pnpm install
@@ -118,9 +128,24 @@ pnpm typecheck    # strict TS across the monorepo
 pnpm lint         # per-package architecture lints
 pnpm test         # unit tests (core/cli/mcp/adapters) + e2e suite
 pnpm test:e2e     # end-to-end handoff/resume against the built CLI & MCP server
+pnpm test:py      # Hermes bridge contract + real-CLI parity (pytest)
+
+# JSON Schemas are generated from the Zod source of truth:
+pnpm emit:schemas          # regenerate schemas/*.json
+pnpm emit:schemas --check  # CI drift check (exit 1 on drift)
+
+# Documentation site (VitePress):
+pnpm --filter @baton/docs dev    # local dev server
+pnpm --filter @baton/docs build  # static build (also runs on CI → Pages)
 ```
 
-CI runs all of the above on macOS, Linux, and Windows (Node 22).
+Working on the repo with an AI agent? Read [`AGENTS.md`](./AGENTS.md) —
+it maps the package graph, the schema-driven development loop, and the
+sharp edges.
+
+CI runs build, typecheck, lint, tests, e2e, and the pytest suite on macOS,
+Linux, and Windows (Node 22); docs deploy to GitHub Pages on pushes to
+`main` (`.github/workflows/docs.yml`).
 
 Exit codes (all commands, with or without `--json`): `0` success, `2`
 user/input error, `3` validation failure, `4` not found/conflict, `5`
@@ -130,7 +155,7 @@ policy/security block.
 
 No network, telemetry, or cloud sync. Secret-like values are redacted before
 write with the redaction recorded by field path only. Transcript-bearing
-fields are rejected by policy. See [`docs/security.md`](./docs/security.md).
+fields are rejected by policy. See [`docs/guide/security.md`](./docs/guide/security.md).
 
 ## License
 

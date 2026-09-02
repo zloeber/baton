@@ -3,14 +3,14 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { initProject } from "@threadline/core";
+import { initProject } from "@baton/core";
 import { GenericAdapter } from "../src/index.js";
 
 let root: string;
 const CLI_TS = new URL("../../cli/dist/main.js", import.meta.url).pathname;
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), "threadline-adapter-"));
+  root = mkdtempSync(join(tmpdir(), "baton-adapter-"));
   initProject(root);
 });
 

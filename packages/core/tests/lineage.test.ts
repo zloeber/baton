@@ -19,7 +19,7 @@ let root: string;
 let store: ProjectStore;
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), "threadline-lineage-"));
+  root = mkdtempSync(join(tmpdir(), "baton-lineage-"));
   store = new ProjectStore(root);
 });
 

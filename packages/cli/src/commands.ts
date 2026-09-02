@@ -10,6 +10,7 @@ import {
   Config,
   Handoff,
   MergeConflictError,
+  resolveBatonDir,
   ProjectStore,
   ValidationReport,
   Validator,
@@ -20,7 +21,10 @@ import {
   createMerge,
   computeFreshness,
   defaultConfig,
+  detectLegacyProject,
   DetectorSignals,
+  migrateLegacyProject,
+  planLegacyMigration,
   evaluateEvent,
   initProject,
   isInitialized,
@@ -37,7 +41,7 @@ import {
   saveConfig,
   supersedePredecessors,
   transitionHandoff,
-} from "@threadline/core";
+} from "@baton/core";
 import { AppContext, CliError, requireInitialized } from "./context.js";
 import { SqliteIndex } from "./sqliteIndex.js";
 
@@ -60,7 +64,17 @@ function short(h: Handoff) {
 
 // ---------------------------------------------------------------- init
 
-export function cmdInit(ctx: AppContext, projectId?: string): CommandResult {
+export function cmdInit(
+  ctx: AppContext,
+  projectId?: string,
+  opts: { migrateLegacy?: boolean } = {},
+): CommandResult {
+  // Consent-gated legacy migration (spec-hermes-adapter §7.2): only with the
+  // explicit flag, never automatically.
+  let migration: ReturnType<typeof migrateLegacyProject> | null = null;
+  if (opts.migrateLegacy && detectLegacyProject(ctx.rootDir)) {
+    migration = migrateLegacyProject(ctx.rootDir);
+  }
   const result = initProject(ctx.rootDir, projectId);
   // Stamp the computed project id when the caller did not supply one.
   const cfg = defaultConfig();
@@ -70,14 +84,57 @@ export function cmdInit(ctx: AppContext, projectId?: string): CommandResult {
     saveConfig(ctx.rootDir, loaded);
   }
   void cfg;
+  const migrationText =
+    migration === null
+      ? ""
+      : migration.migrated
+        ? `  migrated: .threadline/ -> .baton/ (${migration.rewritten.length} record(s) re-id'd)\n`
+        : "";
+  const legacyHint =
+    !opts.migrateLegacy && detectLegacyProject(ctx.rootDir)
+      ? `  note:     legacy .threadline/ detected — run "baton migrate" to move it to .baton/\n`
+      : "";
   return {
-    payload: result,
+    payload: { ...result, migration },
     text:
-      `Initialized Threadline in ${ctx.rootDir}\n` +
+      `Initialized Baton in ${ctx.rootDir}\n` +
       `  created:  ${result.created.join(", ")}\n` +
-      (result.existing.length > 0 ? `  existing: ${result.existing.join(", ")}\n` : ""),
+      (result.existing.length > 0 ? `  existing: ${result.existing.join(", ")}\n` : "") +
+      migrationText +
+      legacyHint,
     exitCode: 0,
   };
+}
+
+// ------------------------------------------------------------ migrate
+
+export function cmdMigrate(ctx: AppContext, opts: { dryRun?: boolean }): CommandResult {
+  if (!detectLegacyProject(ctx.rootDir)) {
+    return {
+      payload: { migrated: false, reason: "no legacy directory" },
+      text: `No legacy .threadline/ directory in ${ctx.rootDir}; nothing to migrate.\n`,
+      exitCode: 0,
+    };
+  }
+  if (opts.dryRun) {
+    const plan = planLegacyMigration(ctx.rootDir);
+    const text =
+      `Dry run — migration plan for ${ctx.rootDir}:\n` +
+      plan.items.map((i) => `  ${i.action}: ${i.source}/ -> ${i.destination}/`).join("\n") + "\n" +
+      (plan.handoffs_to_rewrite.length > 0
+        ? `  rewrite $schema in ${plan.handoffs_to_rewrite.length} record(s):\n    ${plan.handoffs_to_rewrite.join("\n    ")}\n`
+        : "") +
+      plan.warnings.map((w) => `  warning: ${w}\n`).join("") +
+      `Re-run without --dry-run to apply.\n`;
+    return { payload: { dry_run: true, plan }, text, exitCode: 0 };
+  }
+  const result = migrateLegacyProject(ctx.rootDir);
+  const text =
+    `Migrated legacy Baton state in ${ctx.rootDir}:\n` +
+    `  moved:    .threadline/ -> ${result.backup_dir ? ".baton/ (legacy copy kept at .baton.legacy/)" : ".baton/"}\n` +
+    `  re-id'd:  ${result.rewritten.length} record(s) now use the baton.dev schema id\n` +
+    result.plan.warnings.map((w) => `  warning: ${w}\n`).join("");
+  return { payload: result, text, exitCode: 0 };
 }
 
 // ------------------------------------------------------------- session
@@ -109,9 +166,9 @@ export function cmdSessionBegin(
 // ---------------------------------------------------------- checkpoint
 
 export interface CheckpointInput {
-  title: string;
-  objective: string;
-  currentState: string;
+  title?: string;
+  objective?: string;
+  currentState?: string;
   completed?: string[];
   constraints?: string[];
   definitionOfDone?: string[];
@@ -316,7 +373,7 @@ function listChangedFiles(rootDir: string): string[] {
           return false;
         }
       })
-      .filter((p) => !p.startsWith(".threadline/"));
+      .filter((p) => !p.startsWith(".baton/") && !p.startsWith(".threadline/"));
   } catch {
     return [];
   }
@@ -418,7 +475,7 @@ export function cmdHandoffReady(
   ctx.store.update(ready);
   return {
     payload: { handoff: ready },
-    text: `Ready: ${ready.id}\nResume with: threadline resume ${ready.id}\n`,
+    text: `Ready: ${ready.id}\nResume with: baton resume ${ready.id}\n`,
     exitCode: 0,
   };
 }
@@ -654,6 +711,7 @@ export function cmdDetect(
 
 export function cmdDoctor(ctx: AppContext): CommandResult {
   const initialized = isInitialized(ctx.rootDir);
+  const legacyDetected = detectLegacyProject(ctx.rootDir);
   const broken = initialized ? ctx.store.brokenFiles() : [];
   const git = captureGitInfo(ctx.rootDir);
   let indexOk: boolean | null = null;
@@ -668,19 +726,23 @@ export function cmdDoctor(ctx: AppContext): CommandResult {
   const payload = {
     root: ctx.rootDir,
     initialized,
+    legacy_detected: legacyDetected,
     broken_files: broken,
     git,
     sqlite_index: indexOk === null ? "unknown" : indexOk ? "ok" : "unavailable",
     config_valid: initialized,
   };
   const text =
-    `Threadline doctor\n` +
+    `Baton doctor\n` +
     `  project root:   ${ctx.rootDir}\n` +
     `  initialized:    ${initialized}\n` +
-    `  config:         ${initialized ? "ok" : "missing (run threadline init)"}\n` +
+    `  config:         ${initialized ? "ok" : "missing (run baton init)"}\n` +
     `  git:            ${git.vcs === "git" ? `head ${git.head}${git.dirty ? " (dirty)" : ""}` : "not a git repository"}\n` +
     `  sqlite index:   ${payload.sqlite_index}\n` +
-    `  broken records: ${broken.length === 0 ? "none" : broken.map((b) => `${b.file}: ${b.error}`).join("; ")}\n`;
+    `  broken records: ${broken.length === 0 ? "none" : broken.map((b) => `${b.file}: ${b.error}`).join("; ")}\n` +
+    (legacyDetected
+      ? `  legacy dir:     .threadline/ detected — run "baton migrate --dry-run" then "baton migrate"\n`
+      : "");
   return { payload, text, exitCode: initialized && broken.length === 0 ? 0 : 2 };
 }
 
@@ -688,8 +750,9 @@ export function cmdDoctor(ctx: AppContext): CommandResult {
 
 export function cmdGc(ctx: AppContext, opts: { dryRun?: boolean }): CommandResult {
   requireInitialized(ctx);
-  const cacheDir = join(ctx.rootDir, ".threadline", "cache");
-  const indexSqlite = join(ctx.rootDir, ".threadline", "index.sqlite");
+  const batonDir = resolveBatonDir(ctx.rootDir);
+  const cacheDir = join(batonDir, "cache");
+  const indexSqlite = join(batonDir, "index.sqlite");
   const removable: string[] = [];
   if (existsSync(cacheDir)) removable.push(relative(ctx.rootDir, cacheDir));
   if (existsSync(indexSqlite)) removable.push(relative(ctx.rootDir, indexSqlite));

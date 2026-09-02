@@ -4,6 +4,7 @@
  * Deterministic and pure: inputs in, score + reasons out. The detector never
  * kills or launches a session (spec §3 goal 5, §22.5).
  */
+import { z } from "zod";
 import { DetectorConfig } from "../projectInit.js";
 
 /** Normalized 0–1 detector inputs; null = signal unavailable (§9.1). */
@@ -209,15 +210,34 @@ export function shouldSuppressPrompt(lastPromptAt: string | null, previousPressu
   return { suppress: false, reason: null };
 }
 
-/** Event JSON accepted by `detect --event` and MCP handoff_detect. */
-export interface AdapterEvent {
-  harness: string;
-  session_id?: string | null;
-  signals?: Partial<DetectorSignals>;
+/**
+ * Zod source of truth for the adapter-event wire format. The JSON Schema
+ * emitted to schemas/adapter-event-v0.1.json is generated from this
+ * (scripts/emitSchemas.mjs); edit here, not there.
+ */
+export const AdapterEventSchema = z.object({
+  harness: z.string().min(1),
+  session_id: z.string().nullable().optional(),
+  signals: z
+    .object({
+      contextPressure: z.number().min(0).max(1).nullable(),
+      turnPressure: z.number().min(0).max(1).nullable(),
+      elapsedPressure: z.number().min(0).max(1).nullable(),
+      workBoundary: z.boolean().nullable(),
+      handoffRequest: z.boolean().nullable(),
+      changePressure: z.number().min(0).max(1).nullable(),
+      stuckSignal: z.number().min(0).max(1).nullable(),
+      resumeReadiness: z.number().min(0).max(1).nullable(),
+    })
+    .partial()
+    .optional(),
   /** Material event names that can break prompt cooldown. */
-  material_event?: string | null;
-  at?: string;
-}
+  material_event: z.string().nullable().optional(),
+  at: z.string().optional(),
+}).passthrough(); // forward compatibility: unknown event fields are preserved (§7.1)
+
+/** Event JSON accepted by `detect --event` and MCP handoff_detect. */
+export interface AdapterEvent extends z.infer<typeof AdapterEventSchema> {}
 
 /**
  * Evaluate an adapter event: normalize signals, score, and decide the
@@ -234,7 +254,14 @@ export function evaluateEvent(
   suppressReason: string | null;
   recommendedAction: "none" | "recommend" | "prepare";
 } {
-  const signals: DetectorSignals = { ...nullSignals(), ...event.signals };
+  // Normalize: copy provided signals, dropping explicit nulls so defaults
+  // (false for booleans) survive. Schema fields are nullable for wire
+  // flexibility, but DetectorSignals uses null only for unknown numbers.
+  const signals: DetectorSignals = { ...nullSignals() };
+  for (const [k, v] of Object.entries(event.signals ?? {})) {
+    if (v === null || v === undefined) continue;
+    (signals as unknown as Record<string, unknown>)[k] = v;
+  }
   const result = detectHandoff(signals, cfg);
   const { suppress, reason } = shouldSuppressPrompt(
     lastPromptAt,

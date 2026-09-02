@@ -27,7 +27,7 @@ function project(): string {
 }
 
 function mkdtempGit(): string {
-  const root = join(tmpdir(), `threadline-e2e-${Math.random().toString(36).slice(2, 8)}`);
+  const root = join(tmpdir(), `baton-e2e-${Math.random().toString(36).slice(2, 8)}`);
   mkdirSync(root, { recursive: true });
   execFileSync("git", ["init", "-q"], { cwd: root });
   execFileSync("git", ["config", "user.email", "e2e@example.com"], { cwd: root });
@@ -41,7 +41,7 @@ function mkdtempGit(): string {
 
 function tl(root: string, args: string[], expectExit = 0): { stdout: string; status: number } {
   const r = spawnSync("node", [CLI, ...args], { cwd: root, encoding: "utf8" });
-  expect(r.status, `threadline ${args.join(" ")} -> ${r.status}\n${r.stderr}`).toBe(expectExit);
+  expect(r.status, `baton ${args.join(" ")} -> ${r.status}\n${r.stderr}`).toBe(expectExit);
   return { stdout: r.stdout ?? "", status: r.status ?? 0 };
 }
 
@@ -73,19 +73,19 @@ describe("E2E: init -> checkpoint -> validate -> ready -> resume (§22.1)", () =
   it("runs the full lifecycle with only the CLI", () => {
     const root = project();
     tl(root, ["init"]);
-    expect(existsSync(join(root, ".threadline/config.json"))).toBe(true);
-    expect(existsSync(join(root, ".threadline/handoffs"))).toBe(true);
-    expect(existsSync(join(root, ".threadline/policy.json"))).toBe(true);
+    expect(existsSync(join(root, ".baton/config.json"))).toBe(true);
+    expect(existsSync(join(root, ".baton/handoffs"))).toBe(true);
+    expect(existsSync(join(root, ".baton/policy.json"))).toBe(true);
 
     const id = createDraft(root);
     expect(id).toMatch(/^[0-9a-f-]{36}$/);
 
     // Canonical file name and human-readable JSON on disk.
-    const files = (readdirSafe(join(root, ".threadline/handoffs"))).filter((f) => f.endsWith(".json"));
+    const files = (readdirSafe(join(root, ".baton/handoffs"))).filter((f) => f.endsWith(".json"));
     expect(files).toHaveLength(1);
     expect(files[0]).toMatch(/^\d{8}T\d{6}Z--[0-9a-f]{8}\.json$/);
-    const onDisk = JSON.parse(readFileSync(join(root, ".threadline/handoffs", files[0]!), "utf8")) as Record<string, unknown>;
-    expect(onDisk["$schema"]).toBe("https://threadline.dev/schemas/handoff/v0.1.json");
+    const onDisk = JSON.parse(readFileSync(join(root, ".baton/handoffs", files[0]!), "utf8")) as Record<string, unknown>;
+    expect(onDisk["$schema"]).toBe("https://baton.dev/schemas/handoff/v0.1.json");
 
     // Validate -> ready -> resume.
     tl(root, ["handoff", "validate", id]);
@@ -101,10 +101,10 @@ describe("E2E: init -> checkpoint -> validate -> ready -> resume (§22.1)", () =
     tl(root, ["init"]);
     const id = createDraft(root);
     tl(root, ["handoff", "list"]); // creates sqlite index
-    expect(existsSync(join(root, ".threadline/index.sqlite"))).toBe(true);
-    rmSync(join(root, ".threadline/index.sqlite"));
-    rmSync(join(root, ".threadline/index.sqlite-wal"), { force: true });
-    rmSync(join(root, ".threadline/index.sqlite-shm"), { force: true });
+    expect(existsSync(join(root, ".baton/index.sqlite"))).toBe(true);
+    rmSync(join(root, ".baton/index.sqlite"));
+    rmSync(join(root, ".baton/index.sqlite-wal"), { force: true });
+    rmSync(join(root, ".baton/index.sqlite-shm"), { force: true });
     // JSON remains the source of truth; list still works and rebuilds.
     const out = jsonOutput(root, ["handoff", "list"]) as { handoffs: { id: string }[] };
     expect(out.handoffs.map((h) => h.id)).toContain(id);
@@ -117,7 +117,7 @@ describe("E2E: init -> checkpoint -> validate -> ready -> resume (§22.1)", () =
     tl(root, ["handoff", "list"]);
     tl(root, ["gc", "--dry-run"]);
     tl(root, ["gc"]);
-    expect(existsSync(join(root, ".threadline/index.sqlite"))).toBe(false);
+    expect(existsSync(join(root, ".baton/index.sqlite"))).toBe(false);
     // Canonical records survive gc.
     const out = jsonOutput(root, ["handoff", "list"]) as { handoffs: unknown[] };
     expect(out.handoffs).toHaveLength(1);
@@ -183,8 +183,8 @@ describe("E2E: policy (§22.4)", () => {
     // A record created directly with a secret is redacted at capture, so to test
     // validation blocking we inject one on disk and re-validate.
     const id = createDraft(root);
-    const files = readdirSafe(join(root, ".threadline/handoffs")).filter((f) => f.endsWith(".json"));
-    const p = join(root, ".threadline/handoffs", files[0]!);
+    const files = readdirSafe(join(root, ".baton/handoffs")).filter((f) => f.endsWith(".json"));
+    const p = join(root, ".baton/handoffs", files[0]!);
     const raw = JSON.parse(readFileSync(p, "utf8")) as Record<string, unknown>;
     (raw.summary as { current_state: string }).current_state = "bearer sk-abcdefghijklmnopqrstuvwx";
     writeFileSync(p, JSON.stringify(raw, null, 2));
@@ -239,9 +239,9 @@ describe("E2E: fork and merge (§22.7)", () => {
 
     // Give the forks conflicting decisions and ready them.
     for (const [forkId, decision] of [[forkA.handoff.id, "Use PostgreSQL for storage."], [forkB.handoff.id, "Use SQLite for storage."]] as const) {
-      const files = readdirSafe(join(root, ".threadline/handoffs")).filter((f) => f.endsWith(".json"));
+      const files = readdirSafe(join(root, ".baton/handoffs")).filter((f) => f.endsWith(".json"));
       for (const f of files) {
-        const p = join(root, ".threadline/handoffs", f);
+        const p = join(root, ".baton/handoffs", f);
         const raw = JSON.parse(readFileSync(p, "utf8")) as { id: string; decisions: unknown[] };
         if (raw.id === forkId) {
           raw.decisions = [{ id: "D-001", decision, rationale: null, alternatives_considered: [], evidence_ids: [], made_at: new Date().toISOString() }];
@@ -322,6 +322,103 @@ describe("E2E: doctor and lineage", () => {
     const lineage = tl(root, ["lineage"]).stdout;
     expect(lineage).toContain("[explore]");
     expect(lineage).toContain("fork");
+  });
+});
+
+describe("E2E: legacy .threadline migration (adapter spec §7.2)", () => {
+  it("init hints, migrate --dry-run plans, migrate moves and re-ids, commands then use .baton", () => {
+    const root = project();
+    // Build a legacy project by hand (pre-rename layout).
+    mkdirSync(join(root, ".threadline/handoffs"), { recursive: true });
+    writeFileSync(
+      join(root, ".threadline/config.json"),
+      JSON.stringify({ schema_version: "0.1", project_id: "sha256:legacy-e2e", detector: {}, policy: {} }),
+    );
+    writeFileSync(
+      join(root, ".threadline/handoffs/20260901T120000Z--0198c0de.json"),
+      JSON.stringify({
+        $schema: "https://threadline.dev/schemas/handoff/v0.1.json",
+        schema_version: "0.1",
+        id: "0198c0de-7000-7000-8000-0000000000e2",
+        kind: "handoff",
+        status: "ready",
+        flags: [],
+        created_at: "2026-09-01T12:00:00Z",
+        updated_at: "2026-09-01T12:00:00Z",
+        project: { id: "sha256:legacy-e2e", root_hint: ".", repository: null },
+        origin: { harness: "generic", adapter_version: null, session_id: null, model: null, actor: null },
+        work: { title: "Legacy e2e work", objective: "Survive the rename.", scope: [], constraints: [], definition_of_done: [] },
+        summary: { completed: [], current_state: "pre-rename state", why_it_matters: null },
+        decisions: [],
+        artifacts: [],
+        evidence: [],
+        open_items: [
+          { id: "O-001", priority: "high", description: "Next", suggested_action: "Act", blocked_by: [], acceptance_check: null },
+        ],
+        risks: [],
+        validation: { status: "pass", validated_at: null, checks: [], freshness: null },
+        lineage: { parents: [], relation: "root", branch_label: null, merge_basis: [] },
+        automation: { trigger: "manual", score: null, reasons: [] },
+        redactions: [],
+      }),
+    );
+
+    // Commands still work against the legacy dir before migration.
+    const before = jsonOutput(root, ["handoff", "list"]) as { handoffs: { id: string }[] };
+    expect(before.handoffs.map((h) => h.id)).toContain("0198c0de-7000-7000-8000-0000000000e2");
+
+    // Dry run before init: pure move plan, nothing changed.
+    const dry = tl(root, ["migrate", "--dry-run"]);
+    expect(dry.stdout).toContain("Dry run");
+    expect(dry.stdout).toContain(".threadline/ -> .baton/");
+    expect(existsSync(join(root, ".threadline"))).toBe(true);
+    expect(existsSync(join(root, ".baton"))).toBe(false);
+
+    // init without the flag hints but does not migrate; it creates .baton,
+    // which puts the later migration into merge mode (spec §7.2).
+    const initOut = tl(root, ["init"]);
+    expect(initOut.stdout).toContain("legacy .threadline/ detected");
+    expect(existsSync(join(root, ".threadline"))).toBe(true);
+
+    // Real migration (merge mode: legacy kept as .baton.legacy/).
+    const mig = tl(root, ["migrate"]);
+    expect(mig.stdout).toContain("Migrated legacy Baton state");
+    expect(mig.stdout).toContain(".baton.legacy/");
+    expect(existsSync(join(root, ".threadline"))).toBe(false);
+    expect(existsSync(join(root, ".baton/config.json"))).toBe(true);
+
+    // The init-created config survived the merge (target files are not clobbered).
+    const cfg = JSON.parse(readFileSync(join(root, ".baton/config.json"), "utf8")) as { project_id: string };
+    expect(cfg.project_id).not.toBe("sha256:legacy-e2e");
+
+    // The record was re-id'd and still loads through the canonical schema.
+    const record = JSON.parse(
+      readFileSync(join(root, ".baton/handoffs/20260901T120000Z--0198c0de.json"), "utf8"),
+    ) as Record<string, unknown>;
+    expect(record["$schema"]).toBe("https://baton.dev/schemas/handoff/v0.1.json");
+    const after = jsonOutput(root, ["handoff", "show", "0198c0de"]) as { id: string; work: { title: string } };
+    expect(after.id).toBe("0198c0de-7000-7000-8000-0000000000e2");
+    expect(after.work.title).toBe("Legacy e2e work");
+
+    // Idempotent re-run.
+    const again = tl(root, ["migrate"]);
+    expect(again.stdout).toContain("nothing to migrate");
+
+    // doctor no longer reports the legacy dir.
+    expect(tl(root, ["doctor"]).stdout).not.toContain("legacy dir:");
+  });
+
+  it("init --migrate-legacy performs the migration in one step", () => {
+    const root = project();
+    mkdirSync(join(root, ".threadline/handoffs"), { recursive: true });
+    writeFileSync(
+      join(root, ".threadline/config.json"),
+      JSON.stringify({ schema_version: "0.1", project_id: "sha256:legacy-one-step", detector: {}, policy: {} }),
+    );
+    const out = tl(root, ["init", "--migrate-legacy"]);
+    expect(out.stdout).toContain("migrated: .threadline/ -> .baton/");
+    expect(existsSync(join(root, ".threadline"))).toBe(false);
+    expect(existsSync(join(root, ".baton/config.json"))).toBe(true);
   });
 });
 

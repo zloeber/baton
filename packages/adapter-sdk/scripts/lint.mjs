@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const banned = [/from\s+["'](?!@threadline\/core|node:)/];
+const banned = [/from\s+["'](?!@baton\/core|node:)/];
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 const root = new URL("..", import.meta.url).pathname;

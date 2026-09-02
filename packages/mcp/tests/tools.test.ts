@@ -3,13 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import * as tools from "../src/tools.js";
-import { initProject, Handoff } from "@threadline/core";
+import { initProject, Handoff } from "@baton/core";
 
 let root: string;
 let ctx: tools.ToolContext;
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), "threadline-mcp-"));
+  root = mkdtempSync(join(tmpdir(), "baton-mcp-"));
   initProject(root);
   mkdirSync(join(root, "src"), { recursive: true });
   writeFileSync(join(root, "src/a.ts"), "export const a = 1;\n");
@@ -45,18 +45,18 @@ function captureReq(over: Record<string, unknown> = {}): Record<string, unknown>
   };
 }
 
-describe("threadline_status", () => {
+describe("baton_status", () => {
   it("reports initialized project and latest handoff", () => {
     tools.handoffCapture(ctx, captureReq() as never);
-    const r = tools.threadlineStatus(ctx);
+    const r = tools.batonStatus(ctx);
     expect(r.isError).toBe(false);
     expect((r.structured as { initialized: boolean }).initialized).toBe(true);
     expect((r.structured as { handoff_count: number }).handoff_count).toBe(1);
   });
 
   it("is explicit when uninitialized", () => {
-    const bare = tools.makeContext(mkdtempSync(join(tmpdir(), "threadline-bare-")));
-    const r = tools.threadlineStatus(bare);
+    const bare = tools.makeContext(mkdtempSync(join(tmpdir(), "baton-bare-")));
+    const r = tools.batonStatus(bare);
     expect((r.structured as { initialized: boolean }).initialized).toBe(false);
   });
 });
@@ -76,7 +76,7 @@ describe("handoff_capture", () => {
   });
 
   it("refuses writes to uninitialized projects (policy guard)", () => {
-    const bare = tools.makeContext(mkdtempSync(join(tmpdir(), "threadline-bare2-")));
+    const bare = tools.makeContext(mkdtempSync(join(tmpdir(), "baton-bare2-")));
     const r = tools.handoffCapture(bare, captureReq() as never);
     expect(r.isError).toBe(true);
     expect(JSON.stringify(r.structured)).toContain("POLICY");

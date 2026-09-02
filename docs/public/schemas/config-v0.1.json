@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Baton project config (.baton/config.json)",
+  "description": "Generated from ConfigSchema in packages/core/src/projectInit.ts. Unknown fields pass through for forward compatibility.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "default": "0.1"
+    },
+    "project_id": {
+      "type": "string",
+      "default": ""
+    },
+    "detector": {
+      "type": "object",
+      "properties": {
+        "weights": {
+          "type": "object",
+          "properties": {
+            "explicitRequest": {
+              "type": "number"
+            },
+            "contextPressure": {
+              "type": "number"
+            },
+            "turnPressure": {
+              "type": "number"
+            },
+            "elapsedPressure": {
+              "type": "number"
+            },
+            "changePressure": {
+              "type": "number"
+            },
+            "stuckSignal": {
+              "type": "number"
+            },
+            "workBoundary": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "explicitRequest",
+            "contextPressure",
+            "turnPressure",
+            "elapsedPressure",
+            "changePressure",
+            "stuckSignal",
+            "workBoundary"
+          ],
+          "additionalProperties": false,
+          "default": {
+            "explicitRequest": 1,
+            "contextPressure": 0.7,
+            "turnPressure": 0.15,
+            "elapsedPressure": 0.1,
+            "changePressure": 0.05,
+            "stuckSignal": 0.6,
+            "workBoundary": 0.25
+          }
+        },
+        "recommendThreshold": {
+          "type": "number",
+          "default": 0.7
+        },
+        "autoPrepareThreshold": {
+          "type": "number",
+          "default": 0.85
+        },
+        "readinessThreshold": {
+          "type": "number",
+          "default": 0.8
+        },
+        "promptCooldownMinutes": {
+          "type": "number",
+          "default": 20
+        }
+      },
+      "additionalProperties": true,
+      "default": {}
+    },
+    "policy": {
+      "type": "object",
+      "properties": {
+        "secretPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "(?i)(api[_-]?key|secret|password|passwd|token|bearer)\\s*[:=]\\s*\\S+",
+            "-----BEGIN (?:RSA |EC |OPENSSH |PGP |DSA )?PRIVATE KEY-----",
+            "(?i)x-api-key\\s*[:=]\\s*\\S+",
+            "(?i)authorization\\s*:\\s*\\S+",
+            "(?i)(aws_access_key_id|aws_secret_access_key)\\s*[:=]\\s*\\S+",
+            "ghp_[A-Za-z0-9]{20,}",
+            "github_pat_[A-Za-z0-9_]{20,}",
+            "sk-(?:proj-)?[A-Za-z0-9_-]{20,}",
+            "AKIA[0-9A-Z]{16}"
+          ]
+        },
+        "sensitiveFilePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "\\.env(\\.|$)",
+            "credentials",
+            "\\.pem$",
+            "id_rsa",
+            "\\.secret",
+            "secrets\\."
+          ]
+        },
+        "allowedRoots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "hashSessionIds": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": true,
+      "default": {}
+    }
+  },
+  "additionalProperties": true
+}

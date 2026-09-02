@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 function makeProject(): string {
-  dir = mkdtempSync(join(tmpdir(), "threadline-valid-"));
+  dir = mkdtempSync(join(tmpdir(), "baton-valid-"));
   mkdirSync(join(dir, "src/auth"), { recursive: true });
   return dir;
 }

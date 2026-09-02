@@ -1,12 +1,12 @@
 /**
  * Rebuildable SQLite index (spec §14). JSON records remain the source of
  * truth; this index accelerates queries and stores ephemeral detector state.
- * It can be deleted at any time and rebuilt with `threadline gc` or on load.
+ * It can be deleted at any time and rebuilt with `baton gc` or on load.
  */
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import Database from "better-sqlite3";
-import { IndexEntry } from "@threadline/core";
+import { IndexEntry, resolveBatonDirName } from "@baton/core";
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS handoff_index (
@@ -33,8 +33,8 @@ export class SqliteIndex {
   private readonly db: Database.Database;
   readonly path: string;
 
-  constructor(rootDir: string, threadlineDirName = ".threadline") {
-    const dir = join(rootDir, threadlineDirName);
+  constructor(rootDir: string, batonDirName?: string) {
+    const dir = join(rootDir, batonDirName ?? resolveBatonDirName(rootDir));
     mkdirSync(dir, { recursive: true });
     this.path = join(dir, "index.sqlite");
     this.db = new Database(this.path);

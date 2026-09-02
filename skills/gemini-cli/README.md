@@ -1,15 +1,15 @@
-# Threadline for Gemini CLI
+# Baton for Gemini CLI
 
-Install the CLI and add the skill content from `../threadline/SKILL.md` as a
+Install the CLI and add the skill content from `../baton/SKILL.md` as a
 project command/extension instruction. If your Gemini CLI version supports
 MCP, register the server:
 
 ```json
 {
   "mcpServers": {
-    "threadline": {
+    "baton": {
       "command": "node",
-      "args": ["/path/to/threadline/packages/mcp/dist/server.js"]
+      "args": ["/path/to/baton/packages/mcp/dist/server.js"]
     }
   }
 }
@@ -18,6 +18,6 @@ MCP, register the server:
 Otherwise use the terminal commands:
 
 ```bash
-threadline handoff list --status ready
-threadline resume <id>
+baton handoff list --status ready
+baton resume <id>
 ```

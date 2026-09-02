@@ -1,4 +1,4 @@
-// @threadline/core — Threadline domain library.
+// @baton/core — Baton domain library.
 // Pure, platform-independent; no MCP, terminal, vendor SDK, network, or
 // canonical-data database dependencies.
 
@@ -9,6 +9,7 @@ export * from "./freshness.js";
 export * from "./gitAdapter.js";
 export * from "./sessionState.js";
 export * from "./logger.js";
+export * from "./migration.js";
 export * from "./schema.js";
 export * from "./fsAtomic.js";
 export * from "./projectStore.js";

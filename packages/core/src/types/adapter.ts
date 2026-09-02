@@ -25,8 +25,8 @@ export interface RenderNoticeInput {
   recommendation: DetectorResult & { recommendedAction: RecommendationAction };
 }
 
-export interface ThreadlineAdapter {
-  /** Map the vendor surface onto a Threadline project context. */
+export interface BatonAdapter {
+  /** Map the vendor surface onto a Baton project context. */
   getProjectContext(): Promise<ProjectContext>;
   /** Session metadata allowed by policy (opaque ids; no raw messages). */
   getSessionMetadata(): Promise<SessionMetadata>;

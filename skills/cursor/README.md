@@ -1,13 +1,13 @@
-# Threadline for Cursor
+# Baton for Cursor
 
-Add `../threadline/SKILL.md` as a project rule (`.cursor/rules/threadline.md`)
+Add `../baton/SKILL.md` as a project rule (`.cursor/rules/baton.md`)
 and use the CLI from Cursor's terminal:
 
 ```bash
-threadline handoff list --status ready
-threadline resume <id> --format prompt
+baton handoff list --status ready
+baton resume <id> --format prompt
 ```
 
 Paste the rendered resume brief at the start of a new chat. Avoid relying on
 undocumented context metrics; trigger handoffs explicitly with
-`threadline checkpoint create ...` / `threadline handoff prepare`.
+`baton checkpoint create ...` / `baton handoff prepare`.

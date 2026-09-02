@@ -6,7 +6,7 @@ import { ProjectStore } from "../src/projectStore.js";
 import { HandoffNotFoundError } from "../src/projectStore.js";
 
 function tmpProject(): string {
-  return mkdtempSync(join(tmpdir(), "threadline-store-"));
+  return mkdtempSync(join(tmpdir(), "baton-store-"));
 }
 
 function draftInput(over: Record<string, unknown> = {}): Record<string, unknown> {

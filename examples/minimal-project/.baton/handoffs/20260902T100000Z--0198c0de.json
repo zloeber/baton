@@ -1,5 +1,5 @@
 {
-  "$schema": "https://threadline.dev/schemas/handoff/v0.1.json",
+  "$schema": "https://baton.dev/schemas/handoff/v0.1.json",
   "schema_version": "0.1",
   "id": "0198c0de-7000-7000-8000-000000000003",
   "kind": "handoff",

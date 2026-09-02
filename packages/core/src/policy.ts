@@ -195,7 +195,7 @@ export interface AuditReport {
   purge_eligible: boolean;
 }
 
-/** `threadline audit` backing: enumerate data fields, redactions, ext refs. */
+/** `baton audit` backing: enumerate data fields, redactions, ext refs. */
 export function auditHandoff(h: Handoff): AuditReport {
   const fieldCounts: Record<string, number> = {
     decisions: h.decisions.length,

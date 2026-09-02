@@ -35,7 +35,7 @@ function truncate(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
   return (
     text.slice(0, maxChars - 60) +
-    "\n\n[BRIEF TRUNCATED — run `threadline handoff show <id> --format json` for the full record]"
+    "\n\n[BRIEF TRUNCATED — run `baton handoff show <id> --format json` for the full record]"
   );
 }
 

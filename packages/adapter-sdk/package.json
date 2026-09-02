@@ -1,7 +1,7 @@
 {
-  "name": "@threadline/adapter-sdk",
+  "name": "@baton/adapter-sdk",
   "version": "0.1.0",
-  "description": "Normalized event and adapter interfaces for Threadline harness integrations (spec §15).",
+  "description": "Normalized event and adapter interfaces for Baton harness integrations (spec §15).",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -15,7 +15,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@threadline/core": "workspace:*"
+    "@baton/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

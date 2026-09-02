@@ -1,7 +1,7 @@
 /**
- * @threadline/adapter-generic (spec §15): the reference adapter.
+ * @baton/adapter-generic (spec §15): the reference adapter.
  *
- * It integrates through the documented CLI surface only: `threadline detect
+ * It integrates through the documented CLI surface only: `baton detect
  * --event`, checkpoint creation, and resume rendering. It never requires raw
  * messages or hidden prompts, and it never launches or terminates sessions.
  */
@@ -13,24 +13,25 @@ import {
   findProjectRoot,
   isInitialized,
   ProjectStore,
-} from "@threadline/core";
+  resolveBatonDirName,
+} from "@baton/core";
 import type {
   AdapterEvent,
   DetectorResult,
   ProjectContext,
   SessionMetadata,
-  ThreadlineAdapter,
-} from "@threadline/adapter-sdk";
+  BatonAdapter,
+} from "@baton/adapter-sdk";
 
 export interface GenericAdapterOptions {
   /** Project root; defaults to the nearest initialized root from cwd. */
   rootDir?: string;
-  /** Path to the threadline CLI entry (defaults to npx-able `threadline`). */
+  /** Path to the baton CLI entry (defaults to npx-able `baton`). */
   cliCommand?: string;
   cliArgs?: string[];
 }
 
-export class GenericAdapter implements ThreadlineAdapter {
+export class GenericAdapter implements BatonAdapter {
   private readonly rootDir: string;
   private readonly cli: { command: string; args: string[] };
 
@@ -90,6 +91,6 @@ export class GenericAdapter implements ThreadlineAdapter {
 
   /** Config presence check helper used by tests. */
   hasConfig(): boolean {
-    return existsSync(join(this.rootDir, ".threadline", "config.json"));
+    return existsSync(join(this.rootDir, resolveBatonDirName(this.rootDir), "config.json"));
   }
 }

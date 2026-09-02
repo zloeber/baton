@@ -1,0 +1,80 @@
+# Baton local development manifest — mirrors CI (.github/workflows/ci.yml).
+# `mise install` pins the toolchain; `mise tasks` lists the task graph.
+# Machine-only overrides go in .mise.local.toml (gitignored).
+
+[tools]
+node = "22"
+python = "3.11"
+pnpm = "10.15.0"
+pytest = "8.3.4"
+
+[settings]
+# Needed for better-sqlite3 native builds (spec §19 dependency posture).
+experimental = true
+
+# ----- one-time setup -----
+[tasks.setup]
+description = "Install toolchain + workspace dependencies (first run)"
+run = ["mise install", "pnpm install", "python -m pip install --quiet pytest"]
+
+# ----- parity with CI (same order) -----
+[tasks.ci]
+description = "Everything CI runs, in the same order"
+depends = ["typecheck", "lint", "build", "test"]
+
+[tasks.typecheck]
+description = "Typecheck all workspace packages"
+run = "pnpm typecheck"
+
+[tasks.lint]
+description = "Architecture lints for all packages"
+run = "pnpm lint"
+
+[tasks.build]
+description = "Build all workspace packages (core first)"
+run = "pnpm build"
+
+[tasks.test]
+description = "Unit + e2e suites"
+run = "pnpm test"
+
+[tasks.test-python]
+description = "Hermes bridge contract + parity tests (pytest)"
+run = "python3 -m pytest tests/python"
+
+[tasks."test:py"]
+description = "Alias for test-python"
+run = "python3 -m pytest tests/python"
+
+[tasks."test:e2e"]
+description = "End-to-end suite only"
+run = "pnpm run test:e2e"
+
+# ----- schema emission -----
+[tasks."emit:schemas"]
+description = "Emit JSON Schemas from the Zod source of truth (run after schema edits)"
+run = "pnpm --filter @baton/core emit:schemas"
+
+[tasks."schemas:check"]
+description = "Fail if checked-in schemas drifted from the source of truth"
+run = "pnpm --filter @baton/core exec node scripts/emitSchemas.mjs --check"
+
+# ----- docs -----
+[tasks."docs:dev"]
+description = "VitePress dev server for the documentation site"
+dir = "{{ config_root }}/docs"
+run = "pnpm dev"
+
+[tasks."docs:build"]
+description = "Build the documentation site statically"
+dir = "{{ config_root }}/docs"
+run = "pnpm build"
+
+# ----- convenience -----
+[tasks.watch-core]
+description = "Rebuild @baton/core on change"
+run = "pnpm --filter @baton/core run build --watch"
+
+[tasks.clean]
+description = "Remove build artifacts and dependencies"
+run = "pnpm clean"

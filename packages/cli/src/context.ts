@@ -6,7 +6,7 @@ import {
   captureGitInfo,
   findProjectRoot,
   loadConfig,
-} from "@threadline/core";
+} from "@baton/core";
 
 export class CliError extends Error {
   constructor(
@@ -44,6 +44,6 @@ export function loadContext(rootOption?: string): AppContext {
 
 export function requireInitialized(ctx: AppContext): void {
   if (ctx.config.project_id === undefined || ctx.config === undefined) {
-    throw new CliError("project not initialized; run `threadline init` first", "USER");
+    throw new CliError("project not initialized; run `baton init` first", "USER");
   }
 }

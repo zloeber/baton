@@ -5,7 +5,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
-const banned = [/from\s+["'](?:@threadline\/(?:cli)|openai|@anthropic-ai)["']/];
+const banned = [/from\s+["'](?:@baton\/(?:cli)|openai|@anthropic-ai)["']/];
 const shellToolBan = /name:\s*["'](?:shell|bash|exec|execute_command)["']/;
 
 let violations = 0;
