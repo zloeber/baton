@@ -27,14 +27,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+
+      # setup-node's `cache: pnpm` needs the pnpm binary on PATH already.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.15.0
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -49,6 +50,9 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          # Self-enable Pages (source: GitHub Actions) on the first deploy.
+          enablement: true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
