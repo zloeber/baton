@@ -1,0 +1,9 @@
+# Normalize line endings: this repo generates artifacts (schemas/*.json) and
+# byte-compares them in tests/CI. CRLF checkouts (windows autocrlf) would make
+# the emitted-LF vs checked-out-CRLF comparison report false drift.
+* text=auto eol=lf
+
+# Binary assets (none yet, but explicit is safer than accidental conversion).
+*.png binary
+*.jpg binary
+*.ico binary

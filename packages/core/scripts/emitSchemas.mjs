@@ -94,6 +94,13 @@ function render(doc) {
   return JSON.stringify(doc, null, 2) + "\n";
 }
 
+// Compare newline-insensitively: a windows checkout with autocrlf=true materializes
+// checked-in files with CRLF, which would false-alarm the byte-compare below.
+// (.gitattributes pins LF in the repository; this guards local clones.)
+function normalizeEol(s) {
+  return s.replace(/\r\n/g, "\n");
+}
+
 const check = process.argv.includes("--check");
 let drifted = 0;
 
@@ -101,8 +108,8 @@ for (const t of TARGETS) {
   const emitted = render(emit(t.schema, t));
   const path = join(schemasDir, t.file);
   if (check) {
-    const current = readFileSync(path, "utf8");
-    if (current !== emitted) {
+    const current = normalizeEol(readFileSync(path, "utf8"));
+    if (current !== normalizeEol(emitted)) {
       console.error(`SCHEMA DRIFT: ${t.file} differs from the Zod source of truth.`);
       console.error(`  run: mise schemas   (or pnpm --filter @baton/core emit:schemas)`);
       drifted++;
