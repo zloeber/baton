@@ -3,8 +3,11 @@
 // MCP, terminal, vendor SDK, network, and canonical-data database dependencies.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = new URL("..", import.meta.url).pathname;
+// fileURLToPath, not .pathname: .pathname yields "/D:/..." on Windows and fs
+// calls throw ENOENT with a doubled drive path.
+const root = fileURLToPath(new URL("..", import.meta.url));
 const banned = [
   /from\s+["'](?:@baton\/(?:cli|mcp|adapter-sdk|adapter-generic)|commander|clipanion|yargs|better-sqlite3|node-sqlite3|sqlite3|@modelcontextprotocol\/sdk)["']/,
   /\b(?:require|import)\s*\(?\s*["'](?:@modelcontextprotocol|commander|better-sqlite3|sqlite3)["']/,

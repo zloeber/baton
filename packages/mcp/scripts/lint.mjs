@@ -3,8 +3,11 @@
 // no generic shell execution tool may be registered.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = new URL("..", import.meta.url).pathname;
+// fileURLToPath, not .pathname: .pathname yields "/D:/..." on Windows and fs
+// calls throw ENOENT with a doubled drive path.
+const root = fileURLToPath(new URL("..", import.meta.url));
 const banned = [/from\s+["'](?:@baton\/(?:cli)|openai|@anthropic-ai)["']/];
 const shellToolBan = /name:\s*["'](?:shell|bash|exec|execute_command)["']/;
 

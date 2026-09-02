@@ -2,7 +2,9 @@
 const banned = [/from\s+["'](?:openai|@anthropic-ai|@modelcontextprotocol|cursor|gemini)["']/];
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-const root = new URL("..", import.meta.url).pathname;
+import { fileURLToPath } from "node:url";
+// fileURLToPath, not .pathname: .pathname yields "/D:/..." on Windows.
+const root = fileURLToPath(new URL("..", import.meta.url));
 let violations = 0;
 function walk(dir) {
   for (const entry of readdirSync(dir)) {
