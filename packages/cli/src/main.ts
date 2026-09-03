@@ -318,6 +318,20 @@ program
     run(() => commands.cmdLineage(ctx), global.json);
   });
 
+// --------------------------------------------------------------- timeline
+program
+  .command("timeline")
+  .description("show cross-session handoff timeline for a project")
+  .option("--project <id>", "project id to filter by (defaults to current project)")
+  .option("--since <date>", "only show handoffs after this ISO timestamp")
+  .option("--limit <n>", "maximum number of handoffs to show", "50")
+  .option("--format <format>", "json|md|text", "text")
+  .action((opts: { project?: string; since?: string; limit?: string; format?: string }) => {
+    const global = program.opts<GlobalOpts>();
+    const ctx = loadContext(global.project);
+    run(() => withIndex(ctx, (index) => commands.cmdTimeline(ctx, opts, index)), global.json);
+  });
+
 // --------------------------------------------------------------- metrics
 program
   .command("metrics")

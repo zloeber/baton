@@ -827,6 +827,111 @@ export function cmdLineage(ctx: AppContext): CommandResult {
   };
 }
 
+// --------------------------------------------------------------- timeline
+
+export interface TimelineOptions {
+  project?: string;
+  since?: string;
+  limit?: string;
+  format?: string;
+}
+
+export function cmdTimeline(
+  ctx: AppContext,
+  opts: TimelineOptions,
+  index: SqliteIndex | null,
+): CommandResult {
+  requireInitialized(ctx);
+  const projectId = opts.project ?? ctx.store.projectInfo().id;
+  const since = opts.since ? new Date(opts.since) : null;
+  const limit = opts.limit ? parseInt(opts.limit, 10) : 50;
+  const format = opts.format ?? "text";
+
+  let rows;
+  if (index) {
+    rows = index.query({ project: projectId, since: since?.toISOString(), limit });
+  } else {
+    // Fallback: load all and filter in memory
+    const all = ctx.store.listAll();
+    rows = all
+      .filter((h) => h.metagit?.project_id === projectId || (!h.metagit && projectId === ctx.store.projectInfo().id))
+      .filter((h) => !since || new Date(h.created_at) >= since)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, limit)
+      .map((h) => ({
+        id: h.id,
+        status: h.status,
+        created_at: h.created_at,
+        updated_at: h.updated_at,
+        title: h.work.title,
+        objective: h.work.objective,
+        relation: h.lineage.relation,
+        branch_label: h.lineage.branch_label,
+        parents: h.lineage.parents,
+        file: h.id,
+        metagit: h.metagit,
+      }));
+  }
+
+  const text = formatTimeline(rows, format, projectId);
+  return { payload: { handoffs: rows }, text, exitCode: 0 };
+}
+
+function formatTimeline(
+  rows: Array<{
+    id: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    title: string;
+    objective?: string;
+    relation: string;
+    branch_label?: string | null;
+    parents: string[];
+    metagit: { project_id?: string | null; objective_id?: string | null; session_id?: string | null } | null;
+  }>,
+  format: string,
+  projectId: string,
+): string {
+  if (rows.length === 0) {
+    return `No handoffs found for project ${projectId}.\n`;
+  }
+
+  switch (format) {
+    case "json":
+      return JSON.stringify(rows, null, 2) + "\n";
+    case "md": {
+      const lines = [`# Timeline: ${projectId}\n`];
+      for (const r of rows) {
+        lines.push(`## ${r.title}`);
+        lines.push(`- **id**: \`${r.id}\``);
+        lines.push(`- **status**: ${r.status}`);
+        lines.push(`- **created**: ${r.created_at}`);
+        lines.push(`- **relation**: ${r.relation}${r.branch_label ? ` [${r.branch_label}]` : ""}`);
+        if (r.metagit?.objective_id) {
+          lines.push(`- **metagit objective**: ${r.metagit.objective_id}`);
+        }
+        lines.push(`- **objective**: ${r.objective}`);
+        lines.push("");
+      }
+      return lines.join("\n");
+    }
+    default: {
+      // text format
+      const lines = [`Timeline: ${projectId} (${rows.length} handoffs)\n`];
+      for (const r of rows) {
+        const shortId = r.id.slice(0, 8);
+        const rel = r.relation.padEnd(8);
+        const status = r.status.padEnd(10);
+        const date = r.created_at.slice(0, 10);
+        const meta = r.metagit?.objective_id ? ` [obj:${r.metagit.objective_id.slice(0, 8)}...]` : "";
+        lines.push(`${shortId}  ${status} ${rel} ${date}  ${r.title}${meta}`);
+      }
+      return lines.join("\n") + "\n";
+    }
+  }
+}
+
 // ------------------------------------------------------------- metrics
 
 export function cmdMetrics(ctx: AppContext, index: SqliteIndex | null): CommandResult {

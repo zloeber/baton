@@ -268,6 +268,20 @@ export function defaultAutomation(): AutomationInfo {
   return { trigger: "manual", score: null, reasons: [] };
 }
 
+/**
+ * Metagit integration metadata (optional, for metagit-aware workflows).
+ * Allows linking Baton handoffs to metagit projects, objectives, and sessions.
+ */
+export const MetagitInfoSchema = z
+  .object({
+    project_id: z.string().nullable(),
+    objective_id: z.string().nullable(),
+    session_id: z.string().nullable(),
+  })
+  .passthrough()
+  .nullable();
+export type MetagitInfo = z.infer<typeof MetagitInfoSchema>;
+
 export const RedactionRecordSchema = z
   .object({
     field: z.string().min(1),
@@ -316,6 +330,7 @@ export const HandoffSchema = z
     validation: ValidationBlockSchema,
     lineage: LineageInfoSchema,
     automation: AutomationInfoSchema,
+    metagit: MetagitInfoSchema.default(null),
     redactions: z.array(RedactionRecordSchema),
   })
   .passthrough();
@@ -359,6 +374,7 @@ export function checkDraftRequirements(h: Handoff): string[] {
   if (!h.work?.objective) missing.push("work.objective");
   if (!h.summary?.current_state) missing.push("summary.current_state");
   if (!h.lineage) missing.push("lineage");
+  // metagit is optional
   return missing;
 }
 
