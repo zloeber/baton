@@ -18,7 +18,10 @@ CREATE TABLE IF NOT EXISTS handoff_index (
   file TEXT NOT NULL,
   score REAL,
   relation TEXT NOT NULL,
-  parents TEXT NOT NULL
+  parents TEXT NOT NULL,
+  metagit_project_id TEXT,
+  metagit_objective_id TEXT,
+  metagit_session_id TEXT
 );
 CREATE TABLE IF NOT EXISTS detector_state (
   id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -47,17 +50,23 @@ export class SqliteIndex {
     const tx = this.db.transaction((rows: IndexEntry[]) => {
       this.db.prepare("DELETE FROM handoff_index").run();
       const insert = this.db.prepare(
-        `INSERT INTO handoff_index (id, status, created_at, updated_at, title, file, score, relation, parents)
-         VALUES (@id, @status, @created_at, @updated_at, @title, @file, @score, @relation, @parents)`,
+        `INSERT INTO handoff_index (id, status, created_at, updated_at, title, file, score, relation, parents, metagit_project_id, metagit_objective_id, metagit_session_id)
+         VALUES (@id, @status, @created_at, @updated_at, @title, @file, @score, @relation, @parents, @metagit_project_id, @metagit_objective_id, @metagit_session_id)`,
       );
       for (const r of rows) {
-        insert.run({ ...r, parents: JSON.stringify(r.parents) });
+        insert.run({
+          ...r,
+          parents: JSON.stringify(r.parents),
+          metagit_project_id: r.metagit?.project_id ?? null,
+          metagit_objective_id: r.metagit?.objective_id ?? null,
+          metagit_session_id: r.metagit?.session_id ?? null,
+        });
       }
     });
     tx(entries);
   }
 
-  query(opts: { status?: string; work?: string } = {}): IndexEntry[] {
+  query(opts: { status?: string; work?: string; project?: string; since?: string; limit?: number } = {}): IndexEntry[] {
     let sql = "SELECT * FROM handoff_index";
     const clauses: string[] = [];
     const params: Record<string, unknown> = {};
@@ -69,10 +78,28 @@ export class SqliteIndex {
       clauses.push("(title LIKE @work OR file LIKE @work)");
       params.work = `%${opts.work}%`;
     }
+    if (opts.project) {
+      clauses.push("metagit_project_id = @project");
+      params.project = opts.project;
+    }
+    if (opts.since) {
+      clauses.push("created_at >= @since");
+      params.since = opts.since;
+    }
     if (clauses.length > 0) sql += " WHERE " + clauses.join(" AND ");
-    sql += " ORDER BY created_at ASC";
-    const rows = this.db.prepare(sql).all(params) as (IndexEntry & { parents: string })[];
-    return rows.map((r) => ({ ...r, parents: JSON.parse(r.parents) as string[] }));
+    sql += " ORDER BY created_at DESC";
+    if (opts.limit) sql += " LIMIT @limit";
+    if (opts.limit) params.limit = opts.limit;
+    const rows = this.db.prepare(sql).all(params) as (IndexEntry & { parents: string; metagit_project_id: string | null; metagit_objective_id: string | null; metagit_session_id: string | null })[];
+    return rows.map((r) => ({
+      ...r,
+      parents: JSON.parse(r.parents) as string[],
+      metagit: {
+        project_id: r.metagit_project_id,
+        objective_id: r.metagit_objective_id,
+        session_id: r.metagit_session_id,
+      },
+    }));
   }
 
   counts(): Record<string, number> {

@@ -730,6 +730,43 @@
       ],
       "additionalProperties": true
     },
+    "metagit": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "project_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "objective_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "session_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "project_id",
+            "objective_id",
+            "session_id"
+          ],
+          "additionalProperties": true
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "redactions": {
       "type": "array",
       "items": {

@@ -44,6 +44,7 @@ export interface IndexEntry {
   score: number | null;
   relation: string;
   parents: string[];
+  metagit: { project_id?: string | null; objective_id?: string | null; session_id?: string | null } | null;
 }
 
 export class HandoffNotFoundError extends Error {
@@ -214,6 +215,7 @@ export class ProjectStore {
       score: h.automation.score,
       relation: h.lineage.relation,
       parents: h.lineage.parents,
+      metagit: h.metagit,
     }));
   }
 
